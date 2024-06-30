@@ -1,4 +1,4 @@
-local VERSION = "2.9"
+local VERSION = "2.11"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -312,6 +312,8 @@ commands = {
 function eventNewGame()
   mapTokenCount = 0
   defaultSize = 1
+
+  resetLeaderboard()
 
   local xml = room.xmlMapInfo and tfm.get.room.xmlMapInfo.xml
   if xml then
