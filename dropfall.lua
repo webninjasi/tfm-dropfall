@@ -1,4 +1,4 @@
-local VERSION = "2.13"
+local VERSION = "2.14"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -212,6 +212,16 @@ commands = {
 
   map = function(playerName, args)
     tfm.exec.newGame(args[1] or maps[math.random(1, #maps)], args[2])
+  end,
+
+  rst = function(playerName, args)
+    if room.currentMap == "@0" then
+      if room.xmlMapInfo.xml then
+        tfm.exec.newGame(room.xmlMapInfo.xml, args[1])
+      end
+    else
+      tfm.exec.newGame(room.currentMap, args[1])
+    end
   end,
 
   size = function(playerName, args)
