@@ -1,4 +1,4 @@
-local VERSION = "3.18"
+local VERSION = "3.19"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -92,7 +92,7 @@ local function updateImage(targetPlayer, imageId, scaleX, scaleY)
 end
 
 local function updateScore(playerName, row)
-  if mapTokenCount == 0 then
+  if mapTokenCount == 0 and not mapCheckpoints then
     tfm.exec.setPlayerScore(playerName, row.hole, false)
   else
     local maxChars = #tostring(mapTokenCount)
