@@ -4,9 +4,11 @@ local admins = {
   ["Mckeydown#0000"] = true,
   ["Stovedove##0000"] = true,
   ["Lays#1146"] = true,
+  ["Inthebin#0000"] = true,
 }
 local maps = {
   7955349,
+  7955436,
 }
 
 
