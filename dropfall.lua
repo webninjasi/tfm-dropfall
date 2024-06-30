@@ -1,4 +1,4 @@
-local VERSION = "1.7"
+local VERSION = "2.7"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -17,7 +17,9 @@ local bans = {}
 local defaultImage
 local reloadCode
 local fadeInOutEnabled = true
+local mapTokenCount = 0
 
+local collectedBonus = {}
 local playerImage = {}
 local pressCooldown = {}
 local leaderboard = {}
@@ -44,19 +46,29 @@ local function updateImage(targetPlayer, imageId, scaleX, scaleY)
   end
 end
 
+local function updateScore(playerName, row)
+  if mapTokenCount == 0 then
+    tfm.exec.setPlayerScore(playerName, row.hole, false)
+  else
+    local maxChars = #tostring(mapTokenCount)
+    tfm.exec.setPlayerScore(playerName, row.hole * math.pow(10, maxChars) + row.currentBonus, false)
+  end
+end
+
 local function preparePlayer(playerName)
   tfm.exec.bindKeyboard(playerName, 46, true, true)
   tfm.exec.bindKeyboard(playerName, 76, true, true)
 
   local row = leaderboardMap[playerName]
-  
-  if row then
-    tfm.exec.setPlayerScore(playerName, row.hole, false)
+  if row and mapTokenCount == 0 then
+    updateScore(playerName, row)
   end
 
   if defaultImage then
     updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
   end
+
+  tfm.exec.chatMessage("<BL>[module] <N>Press <J>L <N>for leaderboard", playerName)
 end
 
 local function resetLeaderboard()
@@ -70,12 +82,18 @@ local function resetLeaderboard()
   end
 end
 
-local function addLeaderboard(playerName, hole, cheese, time)
+local function updateLeaderboard(playerName, hole, cheese, time, bonus)
   local row = leaderboardMap[playerName]
 
   if row then
     row.hole = row.hole + hole
     row.cheese = row.cheese + cheese
+    row.timestamp = os.time()
+    row.currentBonus = bonus or row.currentBonus
+
+    if bonus and row.bonus < bonus then
+      row.bonus = bonus
+    end
 
     if time ~= 0 and (row.time == 0 or row.time > time) then
       row.time = time
@@ -83,27 +101,42 @@ local function addLeaderboard(playerName, hole, cheese, time)
   else
     row = {
       playerName = playerName,
-      hole = hole,
-      cheese = cheese,
-      time = time,
+      hole = hole or 0,
+      cheese = cheese or 0,
+      time = time or 0,
+      bonus = bonus or 0,
+      currentBonus = bonus or 0,
+      timestamp = os.time(),
     }
     leaderboardMap[playerName] = row
     leaderboard[1 + #leaderboard] = row
   end
 
-  tfm.exec.setPlayerScore(playerName, row.hole, false)
+  updateScore(playerName, row)
   table.sort(leaderboard, function(a, b)
-    if a.hole > b.hole then
+    if a.bonus > b.bonus then
       return true
     end
 
-    if a.hole == b.hole then
-      if a.cheese > b.cheese then
+    if a.bonus == b.bonus then
+      if a.hole > b.hole then
         return true
       end
 
-      if a.cheese == b.cheese then
-        return a.time < b.time
+      if a.hole == b.hole then
+        if a.cheese > b.cheese then
+          return true
+        end
+
+        if a.cheese == b.cheese then
+          if a.time < b.time then
+            return true
+          end
+
+          if a.time == b.time then
+            return a.timestamp < b.timestamp
+          end
+        end
       end
     end
 
@@ -119,16 +152,17 @@ end
 local function showLeaderboard(playerName)
   leaderboardVisible[playerName] = true
   local lines = {
-    [0] = '<textformat tabstops="[50,300,350,450]">\n<b>#\tName\tHole\tCheese\tTime</b>\n'
+    [0] = '<textformat tabstops="[30,250,400,480,550]">\n<b>#\tName\tTokens\tHole\tCheese\tTime</b>\n'
   }
   for i=1, 10 do
     if leaderboard[i] then
-      lines[i] = ("<BL>%d\t<V>%s\t<ROSE>%s\t<J>%s\t<CH>%ss"):format(
+      lines[i] = ("<BL>%d\t<V>%s\t<VP>%s\t<ROSE>%s\t<J>%s\t<CH>%ss"):format(
         i,
         leaderboard[i].playerName,
+        leaderboard[i].bonus,
         leaderboard[i].hole,
         leaderboard[i].cheese,
-        leaderboard[i].time / 100
+        leaderboard[i].time == 0 and "?" or (leaderboard[i].time / 100)
       )
     end
   end
@@ -142,7 +176,7 @@ local allowCommandForEveryone = {
 local commands
 commands = {
   version = function(playerName, args)
-    tfm.exec.chatMessage("<BL>#dropfall " .. VERSION, playerName)
+    tfm.exec.chatMessage("<BL>[module] <N>dropfall v" .. VERSION, playerName)
   end,
 
   image = function(playerName, args)
@@ -150,7 +184,7 @@ commands = {
       defaultImage = {
         imageId = args[1],
         scaleX = args[2] or 1,
-        scaleY = args[3] or 1,
+        scaleY = args[3] or args[2] or 1,
       }
 
       for targetPlayer in next, room.playerList do
@@ -261,19 +295,29 @@ commands = {
       list[1 + #list] = commandName
     end
 
-    tfm.exec.chatMessage(table.concat(list, ', '), playerName)
+    tfm.exec.chatMessage('<BL>[module] <N>' .. table.concat(list, ', '), playerName)
   end,
 }
 
 
 function eventNewGame()
+  mapTokenCount = 0
+
   local xml = room.xmlMapInfo and tfm.get.room.xmlMapInfo.xml
-  if xml and room.xmlMapInfo.author ~= "#Module" then
+  if xml then
     local properties = xml:match('<P (.-)/>')
     if properties then
-      if properties:match('reload=""') then
+      if room.xmlMapInfo.author ~= "#Module" and properties:find('reload=""') then
         mapName = ("<J>%s <BL>- @%s"):format(room.xmlMapInfo.author, room.xmlMapInfo.mapCode)
         reloadCode = xml
+      end
+
+      if properties:find('defilante="') then
+        for obj in xml:gmatch('<O (.-)/>') do
+          if obj:find('C="6"') then
+            mapTokenCount = mapTokenCount + 1
+          end
+        end
       end
     end
   end
@@ -289,6 +333,8 @@ function eventNewGame()
   if mapName then
     ui.setMapName(mapName)
   end
+
+  collectedBonus = {}
 end
 
 function eventLoop(elapsedTime, remainingTime)
@@ -299,6 +345,7 @@ function eventLoop(elapsedTime, remainingTime)
 end
 
 function eventPlayerRespawn(playerName)
+  collectedBonus[playerName] = 0
   tfm.exec.freezePlayer(playerName, true, false)
 
   if defaultImage then
@@ -315,13 +362,32 @@ end
 function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
   if not bans[playerName] then
     tfm.exec.respawnPlayer(playerName)
-    addLeaderboard(playerName, 1, 0, timeElapsedSinceRespawn)
+    updateLeaderboard(playerName, 1, 0, timeElapsedSinceRespawn)
+
+    tfm.exec.chatMessage(('<BL>[module] <V>%s <N>won the map in <J>%s seconds!'):format(
+      playerName,
+      timeElapsedSinceRespawn / 100
+    ), nil)
   end
 end
 
 function eventPlayerGetCheese(playerName)
   if not bans[playerName] then
-    addLeaderboard(playerName, 0, 1, 0)
+    updateLeaderboard(playerName, 0, 1, 0)
+  end
+end
+
+function eventPlayerBonusGrabbed(playerName, bonusId)
+  if bans[playerName] or bonusId ~= 0 then
+    return
+  end
+
+  collectedBonus[playerName] = (collectedBonus[playerName] or 0) + 1
+  updateLeaderboard(playerName, 0, 0, 0, collectedBonus[playerName])
+
+  if mapTokenCount == collectedBonus[playerName] then
+    tfm.exec.giveCheese(playerName)
+    tfm.exec.playerVictory(playerName)
   end
 end
 
@@ -379,12 +445,12 @@ function eventChatCommand(playerName, command)
     ok, err = pcall(cmd, playerName, args)
     if err then
       print(("Error on command %s: %s"):format(tostring(args[0]), tostring(err)))
-      tfm.exec.chatMessage("<R>An error occured.", playerName)
+      tfm.exec.chatMessage("<BL>[module] <N>An error occured.", playerName)
     end
 
     if not allowCommandForEveryone[args[0]] then
       for adminName in next, admins do
-        tfm.exec.chatMessage(("<BL>[%s] !%s"):format(playerName, command), adminName)
+        tfm.exec.chatMessage(("<V>[%s] <BL>!%s"):format(playerName, command), adminName)
       end
     end
   end
