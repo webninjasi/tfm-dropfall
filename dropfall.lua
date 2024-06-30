@@ -1,4 +1,4 @@
-local VERSION = "2.7"
+local VERSION = "2.8"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -15,6 +15,7 @@ local maps = {
 local mapName
 local bans = {}
 local defaultImage
+local defaultSize
 local reloadCode
 local fadeInOutEnabled = true
 local mapTokenCount = 0
@@ -199,6 +200,14 @@ commands = {
     tfm.exec.newGame(args[1] or maps[math.random(#maps)], args[2])
   end,
 
+  size = function(playerName, args)
+    defaultSize = tonumber(args[1])
+
+    for targetName in next, room.playerList do
+      tfm.exec.changePlayerSize(targetName, defaultSize or 1)
+    end
+  end,
+
   mapname = function(playerName, args)
     if args[1] then
       mapName = args[-1]
@@ -302,6 +311,7 @@ commands = {
 
 function eventNewGame()
   mapTokenCount = 0
+  defaultSize = 1
 
   local xml = room.xmlMapInfo and tfm.get.room.xmlMapInfo.xml
   if xml then
@@ -319,6 +329,8 @@ function eventNewGame()
           end
         end
       end
+
+      defaultSize = tonumber(properties:match('size="(%d+)"'))
     end
   end
 
@@ -350,6 +362,10 @@ function eventPlayerRespawn(playerName)
 
   if defaultImage then
     updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
+  end
+
+  if defaultSize then
+    tfm.exec.changePlayerSize(playerName, defaultSize)
   end
 end
 
