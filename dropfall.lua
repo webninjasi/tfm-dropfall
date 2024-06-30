@@ -1,4 +1,4 @@
-local VERSION = "2.14"
+local VERSION = "2.15"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -93,8 +93,12 @@ local function updateLeaderboard(playerName, hole, cheese, time, bonus)
     row.timestamp = os.time()
     row.currentBonus = bonus or row.currentBonus
 
-    if bonus and row.bonus < bonus then
-      row.bonus = bonus
+    if hole > 0 then
+      row.bonus = bonus or 0
+    else
+      if bonus and row.bonus < bonus then
+        row.bonus = bonus
+      end
     end
 
     if time ~= 0 and (row.time == 0 or row.time > time) then
@@ -116,27 +120,33 @@ local function updateLeaderboard(playerName, hole, cheese, time, bonus)
 
   updateScore(playerName, row)
   table.sort(leaderboard, function(a, b)
-    if a.bonus > b.bonus then
+    if a.hole > b.hole then
       return true
     end
 
-    if a.bonus == b.bonus then
-      if a.hole > b.hole then
+    if a.hole == b.hole then
+      if a.bonus > b.bonus then
         return true
       end
 
-      if a.hole == b.hole then
-        if a.cheese > b.cheese then
+      if a.bonus == b.bonus then
+        if a.currentBonus > b.currentBonus then
           return true
         end
 
-        if a.cheese == b.cheese then
-          if a.time < b.time then
+        if a.currentBonus == b.currentBonus then
+          if a.cheese > b.cheese then
             return true
           end
 
-          if a.time == b.time then
-            return a.timestamp < b.timestamp
+          if a.cheese == b.cheese then
+            if a.time < b.time then
+              return true
+            end
+
+            if a.time == b.time then
+              return a.timestamp < b.timestamp
+            end
           end
         end
       end
