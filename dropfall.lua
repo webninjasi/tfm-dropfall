@@ -1,4 +1,4 @@
-local VERSION = "1.4"
+local VERSION = "1.5"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -17,6 +17,7 @@ local bans = {}
 local defaultImage
 local reloadCode
 
+local playerImage = {}
 local pressCooldown = {}
 local leaderboard = {}
 local leaderboardMap = {}
@@ -25,7 +26,12 @@ local leaderboardVisible = {}
 
 local function updateImage(targetPlayer, imageId, scaleX, scaleY)
   if imageId then
-    tfm.exec.addImage(imageId, "%" .. targetPlayer, 0, 0, nil, scaleX, scaleY, 0, 1, 0.5, 0.5, true)
+    if playerImage[targetPlayer] then
+      tfm.exec.removeImage(playerImage[targetPlayer], true)
+      playerImage[targetPlayer] = nil
+    end
+
+    playerImage[targetPlayer] = tfm.exec.addImage(imageId, "%" .. targetPlayer, 0, 0, nil, scaleX, scaleY, 0, 1, 0.5, 0.5, true)
   end
 end
 
@@ -285,6 +291,10 @@ end
 
 function eventPlayerRespawn(playerName)
   tfm.exec.freezePlayer(playerName, true, false)
+
+  if defaultImage then
+    updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
+  end
 end
 
 function eventPlayerDied(playerName)
