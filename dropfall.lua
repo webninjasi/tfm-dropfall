@@ -1,4 +1,4 @@
-local VERSION = "2.12"
+local VERSION = "2.13"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -13,6 +13,7 @@ local maps = {
 
 
 local mapName
+local lastMapCode
 local bans = {}
 local defaultImage
 local defaultSize
@@ -326,7 +327,10 @@ function eventNewGame()
   mapTokenCount = 0
   defaultSize = 1
 
-  resetLeaderboard()
+  if room.currentMap ~= "@0" and lastMapCode ~= room.currentMap then
+    resetLeaderboard()
+    lastMapCode = room.currentMap
+  end
 
   local xml = room.xmlMapInfo and tfm.get.room.xmlMapInfo.xml
   if xml then
