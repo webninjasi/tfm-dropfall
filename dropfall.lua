@@ -1,4 +1,4 @@
-local VERSION = "1.2"
+local VERSION = "1.3"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -350,6 +350,8 @@ for playerName in next, room.playerList do
 end
 
 system.disableChatCommandDisplay(nil, true)
+
+tfm.exec.disablePhysicalConsumables(true)
 tfm.exec.disableAfkDeath(true)
 tfm.exec.disableAutoShaman(true)
 tfm.exec.disableAutoNewGame(true)
