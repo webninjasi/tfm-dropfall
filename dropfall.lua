@@ -197,7 +197,7 @@ commands = {
   end,
 
   map = function(playerName, args)
-    tfm.exec.newGame(args[1] or maps[math.random(#maps)], args[2])
+    tfm.exec.newGame(args[1] or maps[math.random(1, #maps)], args[2])
   end,
 
   size = function(playerName, args)
@@ -501,10 +501,10 @@ for playerName in next, room.playerList do
   preparePlayer(playerName)
 end
 
+math.randomseed(os.time())
 system.disableChatCommandDisplay(nil, true)
-
 tfm.exec.disablePhysicalConsumables(true)
 tfm.exec.disableAfkDeath(true)
 tfm.exec.disableAutoShaman(true)
 tfm.exec.disableAutoNewGame(true)
-tfm.exec.newGame(maps[math.random(#maps)])
+tfm.exec.newGame(maps[math.random(1, #maps)])
