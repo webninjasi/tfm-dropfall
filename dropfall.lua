@@ -1,4 +1,4 @@
-local VERSION = "3.19"
+local VERSION = "3.20"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -503,12 +503,16 @@ function eventNewGame()
 
         local tp = {}
         local x1, y1, x2, y2, vx, vy
+        local relative
         local index = 0
         for joint in xml:gmatch('<JD (.-)/>') do
           if joint:find('tp="') then
             x1, y1 = joint:match('P1="([%d%.]+),([%d%.]+)"')
             x2, y2 = joint:match('P2="([%d%.]+),([%d%.]+)"')
-            vx, vy = joint:match('tp="(%-?[%d%.]+),(%-?[%d%.]+)"')
+            vx, vy, relative = joint:match('tp="(.-),(.-),(1)"')
+            if not vx then
+              vx, vy = joint:match('tp="(.-),(.-)"')
+            end
             index = 1 + index
             tp[index] = {
               x1 = tonumber(x1) or 0,
@@ -517,6 +521,7 @@ function eventNewGame()
               y2 = tonumber(y2) or 0,
               vx = tonumber(vx) or 0,
               vy = tonumber(vy) or 0,
+              relative = relative == '1',
               index = index,
             }
           end
@@ -631,7 +636,7 @@ function eventPlayerBonusGrabbed(playerName, bonusId)
   if mapTeleports and bonusId >= 100 then
     local tp = mapTeleports[bonusId - 100]
     if tp then
-      tfm.exec.movePlayer(playerName, tp.x2, tp.y2, false, tp.vx, tp.vy, false)
+      tfm.exec.movePlayer(playerName, tp.x2, tp.y2, false, tp.vx, tp.vy, tp.relative)
 
       if teleportTime[playerName] and os.time() < teleportTime[playerName] then
         if not teleportReplace then
