@@ -12,7 +12,6 @@ local maps = {
 local mapName
 local bans = {}
 local defaultImage
-local gotCheese = {}
 
 local pressCooldown = {}
 local leaderboard = {}
@@ -45,7 +44,6 @@ local function resetLeaderboard()
   leaderboard = {}
   leaderboardMap = {}
   leaderboardVisible = {}
-  gotCheese = {}
   ui.removeTextArea(1)
 
   for playerName in next, room.playerList do
@@ -254,29 +252,19 @@ function eventNewGame()
   if mapName then
     ui.setMapName(mapName)
   end
-
-  gotCheese = {}
 end
 
 function eventPlayerRespawn(playerName)
-  if gotCheese[playerName] then
-    tfm.exec.giveCheese(playerName)
-  end
-
   tfm.exec.freezePlayer(playerName, true, false)
 end
 
 function eventPlayerDied(playerName)
-  gotCheese[playerName] = nil
-
   if not bans[playerName] then
     tfm.exec.respawnPlayer(playerName)
   end
 end
 
 function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
-  gotCheese[playerName] = nil
-
   if not bans[playerName] then
     tfm.exec.respawnPlayer(playerName)
     addLeaderboard(playerName, 1, 0, timeElapsedSinceRespawn)
@@ -286,7 +274,6 @@ end
 function eventPlayerGetCheese(playerName)
   if not bans[playerName] then
     addLeaderboard(playerName, 0, 1, 0)
-    gotCheese[playerName] = true
   end
 end
 
