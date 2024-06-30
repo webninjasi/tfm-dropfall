@@ -1,4 +1,4 @@
-local VERSION = "2.8"
+local VERSION = "2.9"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -317,6 +317,28 @@ function eventNewGame()
   if xml then
     local properties = xml:match('<P (.-)/>')
     if properties then
+      local customMapName = properties:match('mapname="(.-)"')
+      if customMapName then
+        mapName = customMapName
+      end
+
+      local customImage = properties:match('image="(.-)"')
+      if customImage then
+        local imageId, scaleX, scaleY = customImage:match('^(.-),(.-),(.-)$')
+        if not imageId then
+          imageId, scaleX = customImage:match('^(.-),(.-)$')
+        end
+        if not imageId then
+          imageId = customImage
+        end
+
+        defaultImage = {
+          imageId = imageId,
+          scaleX = tonumber(scaleX) or 1,
+          scaleY = tonumber(scaleY) or tonumber(scaleX) or 1,
+        }
+      end
+
       if room.xmlMapInfo.author ~= "#Module" and properties:find('reload=""') then
         mapName = ("<J>%s <BL>- @%s"):format(room.xmlMapInfo.author, room.xmlMapInfo.mapCode)
         reloadCode = xml
@@ -330,7 +352,10 @@ function eventNewGame()
         end
       end
 
-      defaultSize = tonumber(properties:match('size="(%d+)"'))
+      local customSize = tonumber(properties:match('size="(%d+)"'))
+      if customSize then
+        defaultSize = customSize
+      end
     end
   end
 
