@@ -1,4 +1,4 @@
-local VERSION = "3.17"
+local VERSION = "3.18"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -247,11 +247,33 @@ end
 
 local allowCommandForEveryone = {
   ["version"] = true,
+  ["mapinfo"] = true,
+  ["commands"] = true,
+  ["help"] = true,
 }
 local commands
 commands = {
+  help = function(playerName, args)
+    tfm.exec.chatMessage("<BL>[module] <N>You can AFK here I guess, type <G>!commands <N>for more useful commands.", playerName)
+  end,
+
+  mapinfo = function(playerName, args)
+    tfm.exec.chatMessage("<BL>[module] <N>" .. tostring(lastMapCode), playerName)
+  end,
+
   version = function(playerName, args)
     tfm.exec.chatMessage("<BL>[module] <N>dropfall v" .. VERSION, playerName)
+  end,
+
+  admins = function(playerName, args)
+    local list = {}
+    for name in next, admins do
+      list[1 + #list] = name
+    end
+    tfm.exec.chatMessage("<BL>[module] <N>admins:", playerName)
+    for i=1, #list, 10 do
+      tfm.exec.chatMessage("<V>" .. table.concat(list, ' ', i, math.min(#list, i+9)), playerName)
+    end
   end,
 
   image = function(playerName, args)
@@ -384,8 +406,15 @@ commands = {
 
   commands = function(playerName, args)
     local list = {}
-    for commandName in next, commands do
-      list[1 + #list] = commandName
+
+    if admins[playerName] then
+      for commandName in next, commands do
+        list[1 + #list] = commandName
+      end
+    else
+      for commandName in next, allowCommandForEveryone do
+        list[1 + #list] = commandName
+      end
     end
 
     tfm.exec.chatMessage('<BL>[module] <N>' .. table.concat(list, ', '), playerName)
