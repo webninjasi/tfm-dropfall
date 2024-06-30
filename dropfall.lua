@@ -1,4 +1,4 @@
-local VERSION = "2.15"
+local VERSION = "3.15"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -20,7 +20,10 @@ local defaultSize
 local reloadCode
 local fadeInOutEnabled = true
 local mapTokenCount = 0
+local mapCheckpoints, checkpointImage, checkpointImageSX, checkpointImageSY
 
+local playerCp
+local cpImage = {}
 local collectedBonus = {}
 local playerImage = {}
 local pressCooldown = {}
@@ -28,6 +31,28 @@ local leaderboard = {}
 local leaderboardMap = {}
 local leaderboardVisible = {}
 
+
+local function placeCheckpoint(playerName, index)
+  if not mapCheckpoints then
+    return
+  end
+
+  local cp = mapCheckpoints[index]
+  if not cp then
+    return
+  end
+
+  tfm.exec.removeBonus(1, playerName)
+  tfm.exec.addBonus(0, cp.X, cp.Y, 4, 0, not checkpointImage, playerName)
+
+  if checkpointImage then
+    if cpImage[playerName] then
+      tfm.exec.removeImage(cpImage[playerName])
+    end
+
+    cpImage[playerName] = tfm.exec.addImage(checkpointImage, "!444", cp.X, cp.Y, playerName, checkpointImageSX, checkpointImageSY, 0, 1, 0.5, 0.5, false)
+  end
+end
 
 local function checkFadeInOut()
   local count = 0
@@ -164,7 +189,9 @@ end
 local function showLeaderboard(playerName)
   leaderboardVisible[playerName] = true
   local lines = {
-    [0] = '<textformat tabstops="[30,320,400,480,550]">\n<b>#\tName\tTokens\tHole\tCheese\tTime</b>\n'
+    [0] = ('<textformat tabstops="[30,320,400,480,550]">\n<b>#\tName\t%s\tHole\tCheese\tTime</b>\n'):format(
+      mapCheckpoints and "Checkpoints" or "Tokens"
+    )
   }
   local included = false
   for i=1, 10 do
@@ -190,7 +217,12 @@ local function showLeaderboard(playerName)
       row.time == 0 and "?" or (leaderboard[i].time / 100)
     )
   end
-  lines[1+#lines] = '\n<p align="center"><BL><b>Total Tokens:</b> <N>' .. mapTokenCount
+  if mapTokenCount ~= 0 then
+    lines[1+#lines] = '\n<p align="center"><BL><b>Total Tokens:</b> <N>' .. mapTokenCount
+  end
+  if mapCheckpoints then
+    lines[1+#lines] = '\n<p align="center"><BL><b>Total Checkpoints:</b> <N>' .. #mapCheckpoints
+  end
   ui.addTextArea(1, table.concat(lines, '\n', 0, #lines), playerName, 100, 50, 600, 300, 1, 0, 0.8, true)
 end
 
@@ -346,6 +378,8 @@ commands = {
 function eventNewGame()
   mapTokenCount = 0
   defaultSize = 1
+  mapCheckpoints = nil
+  playerCp = nil
 
   if room.currentMap ~= "@0" and lastMapCode ~= room.currentMap then
     resetLeaderboard()
@@ -356,44 +390,69 @@ function eventNewGame()
   if xml then
     local properties = xml:match('<P (.-)/>')
     if properties then
-      local customMapName = properties:match('mapname="(.-)"')
-      if customMapName then
-        mapName = customMapName
-      end
-
-      local customImage = properties:match('image="(.-)"')
-      if customImage then
-        local imageId, scaleX, scaleY = customImage:match('^(.-),(.-),(.-)$')
-        if not imageId then
-          imageId, scaleX = customImage:match('^(.-),(.-)$')
-        end
-        if not imageId then
-          imageId = customImage
-        end
-
-        defaultImage = {
-          imageId = imageId,
-          scaleX = tonumber(scaleX) or 1,
-          scaleY = tonumber(scaleY) or tonumber(scaleX) or 1,
-        }
-      end
-
       if room.xmlMapInfo.author ~= "#Module" and properties:find('reload=""') then
         mapName = ("<J>%s <BL>- @%s"):format(room.xmlMapInfo.author, room.xmlMapInfo.mapCode)
         reloadCode = xml
-      end
+      else
+        local customMapName = properties:match('mapname="(.-)"')
+        if customMapName then
+          mapName = customMapName
+        end
 
-      if properties:find('defilante="') then
-        for obj in xml:gmatch('<O (.-)/>') do
-          if obj:find('C="6"') then
-            mapTokenCount = mapTokenCount + 1
+        local customImage = properties:match('image="(.-)"')
+        if customImage then
+          local imageId, scaleX, scaleY = customImage:match('^(.-),(.-),(.-)$')
+          if not imageId then
+            imageId, scaleX = customImage:match('^(.-),(.-)$')
+          end
+          if not imageId then
+            imageId = customImage
+          end
+
+          defaultImage = {
+            imageId = imageId,
+            scaleX = tonumber(scaleX) or 1,
+            scaleY = tonumber(scaleY) or tonumber(scaleX) or 1,
+          }
+        end
+
+        if properties:find('defilante="') then
+          for obj in xml:gmatch('<O (.-)/>') do
+            if obj:find('C="6"') then
+              mapTokenCount = mapTokenCount + 1
+            end
           end
         end
-      end
 
-      local customSize = tonumber(properties:match('size="(%d+)"'))
-      if customSize then
-        defaultSize = customSize
+        if properties:find('kitchensink="') then
+          local checkpoints = {}
+          local cp
+
+          for obj in xml:gmatch('<O (.-)/>') do
+            cp = {}
+            for key, val in obj:gmatch('(%S-)="(.-)"') do
+              cp[key] = val
+            end
+            if cp.C == "22" and cp.X and cp.Y then
+              cp.X = tonumber(cp.X) or 0
+              cp.Y = tonumber(cp.Y) or 0
+              checkpoints[1+#checkpoints] = cp
+            end
+          end
+
+          if #checkpoints > 0 then
+            mapCheckpoints = checkpoints
+            checkpointImage, checkpointImageSX, checkpointImageSY = properties:match('kitchensink="([a-zA-z0-9]+%.png),(%d+),(%d+)"')
+            checkpointImageSX = tonumber(checkpointImageSX)
+            checkpointImageSY = tonumber(checkpointImageSY)
+            playerCp = {}
+          end
+        end
+
+        local customSize = tonumber(properties:match('size="(%d+)"'))
+        if customSize then
+          defaultSize = customSize
+        end
       end
     end
   end
@@ -403,6 +462,10 @@ function eventNewGame()
 
     if bans[playerName] then
       tfm.exec.killPlayer(playerName)
+    end
+
+    if mapCheckpoints then
+      placeCheckpoint(playerName, 1)
     end
   end
 
@@ -423,6 +486,11 @@ end
 function eventPlayerRespawn(playerName)
   collectedBonus[playerName] = 0
   tfm.exec.freezePlayer(playerName, true, false)
+
+  if mapCheckpoints then
+    playerCp[playerName] = nil
+    placeCheckpoint(playerName, 1)
+  end
 
   if defaultImage then
     updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
@@ -458,7 +526,26 @@ function eventPlayerGetCheese(playerName)
 end
 
 function eventPlayerBonusGrabbed(playerName, bonusId)
-  if bans[playerName] or bonusId ~= 0 then
+  if bans[playerName] then
+    return
+  end
+
+  if mapCheckpoints then
+    if bonusId == 4 then
+      updateLeaderboard(playerName, 0, 0, 0, playerCp[playerName] or 1)
+      playerCp[playerName] = (playerCp[playerName] or 1) + 1
+      if playerCp[playerName] > #mapCheckpoints then
+        playerCp[playerName] = nil
+        tfm.exec.giveCheese(playerName)
+        tfm.exec.playerVictory(playerName)
+        return
+      end
+      placeCheckpoint(playerName, playerCp[playerName])
+    end
+    return
+  end
+
+  if bonusId ~= 0 then
     return
   end
 
@@ -480,12 +567,12 @@ function eventNewPlayer(playerName)
     ui.setMapName(mapName)
   end
 
-  leaderboardVisible[playerName] = nil
   preparePlayer(playerName)
   checkFadeInOut()
 end
 
 function eventPlayerLeft(playerName)
+  leaderboardVisible[playerName] = nil
   checkFadeInOut()
 end
 
