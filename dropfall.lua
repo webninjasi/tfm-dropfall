@@ -1,4 +1,4 @@
-local VERSION = "3.15"
+local VERSION = "3.16"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -9,6 +9,7 @@ local admins = {
 local maps = {
   7955349,
   7955436,
+  7955494,
 }
 
 
@@ -42,7 +43,7 @@ local function placeCheckpoint(playerName, index)
     return
   end
 
-  tfm.exec.removeBonus(1, playerName)
+  tfm.exec.removeBonus(4, playerName)
   tfm.exec.addBonus(0, cp.X, cp.Y, 4, 0, not checkpointImage, playerName)
 
   if checkpointImage then
@@ -189,7 +190,7 @@ end
 local function showLeaderboard(playerName)
   leaderboardVisible[playerName] = true
   local lines = {
-    [0] = ('<textformat tabstops="[30,320,400,480,550]">\n<b>#\tName\t%s\tHole\tCheese\tTime</b>\n'):format(
+    [0] = ('<textformat tabstops="[30,270,360,430,500]">\n<b>#\tName\t%s\tHole\tCheese\tTime</b>\n'):format(
       mapCheckpoints and "Checkpoints" or "Tokens"
     )
   }
@@ -380,9 +381,11 @@ function eventNewGame()
   defaultSize = 1
   mapCheckpoints = nil
   playerCp = nil
+  defaultImage = nil
 
   if room.currentMap ~= "@0" and lastMapCode ~= room.currentMap then
     resetLeaderboard()
+    mapName = nil
     lastMapCode = room.currentMap
   end
 
@@ -466,6 +469,10 @@ function eventNewGame()
 
     if mapCheckpoints then
       placeCheckpoint(playerName, 1)
+    end
+
+    if defaultImage then
+      updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
     end
   end
 
