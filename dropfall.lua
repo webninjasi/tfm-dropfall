@@ -1,4 +1,4 @@
-local VERSION = "3.16"
+local VERSION = "3.17"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -10,11 +10,13 @@ local maps = {
   7955349,
   7955436,
   7955494,
+  7955497,
 }
 
 
 local mapName
 local lastMapCode
+local mapTeleports
 local bans = {}
 local defaultImage
 local defaultSize
@@ -22,6 +24,8 @@ local reloadCode
 local fadeInOutEnabled = true
 local mapTokenCount = 0
 local mapCheckpoints, checkpointImage, checkpointImageSX, checkpointImageSY
+local teleportReplace
+local teleportTime
 
 local playerCp
 local cpImage = {}
@@ -32,6 +36,19 @@ local leaderboard = {}
 local leaderboardMap = {}
 local leaderboardVisible = {}
 
+
+local function placeTeleport(playerName, tp, initial)
+  if not tp then
+    return
+  end
+
+  tfm.exec.removeBonus(100+tp.index, playerName)
+  tfm.exec.addBonus(0, tp.x1, tp.y1, 100+tp.index, 0, false, playerName)
+
+  if initial then
+    tfm.exec.addImage("168a9a499b2.png", "_444", tp.x1, tp.y1, playerName, 1, 1, 0, 1, 0.5, 0.5, false)
+  end
+end
 
 local function placeCheckpoint(playerName, index)
   if not mapCheckpoints then
@@ -381,7 +398,10 @@ function eventNewGame()
   defaultSize = 1
   mapCheckpoints = nil
   playerCp = nil
+  mapTeleports = nil
   defaultImage = nil
+  teleportReplace = nil
+  teleportTime = nil
 
   if room.currentMap ~= "@0" and lastMapCode ~= room.currentMap then
     resetLeaderboard()
@@ -452,6 +472,32 @@ function eventNewGame()
           end
         end
 
+        local tp = {}
+        local x1, y1, x2, y2, vx, vy
+        local index = 0
+        for joint in xml:gmatch('<JD (.-)/>') do
+          if joint:find('tp="') then
+            x1, y1 = joint:match('P1="([%d%.]+),([%d%.]+)"')
+            x2, y2 = joint:match('P2="([%d%.]+),([%d%.]+)"')
+            vx, vy = joint:match('tp="(%-?[%d%.]+),(%-?[%d%.]+)"')
+            index = 1 + index
+            tp[index] = {
+              x1 = tonumber(x1) or 0,
+              y1 = tonumber(y1) or 0,
+              x2 = tonumber(x2) or 0,
+              y2 = tonumber(y2) or 0,
+              vx = tonumber(vx) or 0,
+              vy = tonumber(vy) or 0,
+              index = index,
+            }
+          end
+        end
+
+        if #tp > 0 then
+          mapTeleports = tp
+          teleportTime = {}
+        end
+
         local customSize = tonumber(properties:match('size="(%d+)"'))
         if customSize then
           defaultSize = customSize
@@ -471,6 +517,12 @@ function eventNewGame()
       placeCheckpoint(playerName, 1)
     end
 
+    if mapTeleports then
+      for i=1, #mapTeleports do
+        placeTeleport(playerName, mapTeleports[i], true)
+      end
+    end
+
     if defaultImage then
       updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
     end
@@ -487,6 +539,16 @@ function eventLoop(elapsedTime, remainingTime)
   if reloadCode and elapsedTime > 3100 then
     tfm.exec.newGame(reloadCode)
     reloadCode = nil
+  end
+
+  if teleportReplace and mapTeleports then
+    for playerName, teleports in next, teleportReplace do
+      for index in next, teleports do
+        placeTeleport(playerName, mapTeleports[index], false)
+      end
+    end
+
+    teleportReplace = nil
   end
 end
 
@@ -537,6 +599,30 @@ function eventPlayerBonusGrabbed(playerName, bonusId)
     return
   end
 
+  if mapTeleports and bonusId >= 100 then
+    local tp = mapTeleports[bonusId - 100]
+    if tp then
+      tfm.exec.movePlayer(playerName, tp.x2, tp.y2, false, tp.vx, tp.vy, false)
+
+      if teleportTime[playerName] and os.time() < teleportTime[playerName] then
+        if not teleportReplace then
+          teleportReplace = {}
+        end
+  
+        if not teleportReplace[playerName] then
+          teleportReplace[playerName] = {}
+        end
+  
+        teleportReplace[playerName][tp.index] = true
+        return
+      end
+
+      teleportTime[playerName] = os.time() + 1000
+      placeTeleport(playerName, tp, false)
+    end
+    return
+  end
+
   if mapCheckpoints then
     if bonusId == 4 then
       updateLeaderboard(playerName, 0, 0, 0, playerCp[playerName] or 1)
@@ -572,6 +658,12 @@ function eventNewPlayer(playerName)
 
   if mapName then
     ui.setMapName(mapName)
+  end
+
+  if mapTeleports then
+    for i=1, #mapTeleports do
+      placeTeleport(playerName, mapTeleports[i], true)
+    end
   end
 
   preparePlayer(playerName)
