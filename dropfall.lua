@@ -1,4 +1,4 @@
-local VERSION = "1.5"
+local VERSION = "1.6"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -16,6 +16,7 @@ local mapName
 local bans = {}
 local defaultImage
 local reloadCode
+local fadeInOutEnabled = true
 
 local playerImage = {}
 local pressCooldown = {}
@@ -24,14 +25,22 @@ local leaderboardMap = {}
 local leaderboardVisible = {}
 
 
+local function checkFadeInOut()
+  local count = 0
+  for _ in next, room.playerList do
+    count = count + 1
+  end
+  fadeInOutEnabled = count < 20
+end
+
 local function updateImage(targetPlayer, imageId, scaleX, scaleY)
   if imageId then
     if playerImage[targetPlayer] then
-      tfm.exec.removeImage(playerImage[targetPlayer], true)
+      tfm.exec.removeImage(playerImage[targetPlayer], fadeInOutEnabled)
       playerImage[targetPlayer] = nil
     end
 
-    playerImage[targetPlayer] = tfm.exec.addImage(imageId, "%" .. targetPlayer, 0, 0, nil, scaleX, scaleY, 0, 1, 0.5, 0.5, true)
+    playerImage[targetPlayer] = tfm.exec.addImage(imageId, "%" .. targetPlayer, 0, 0, nil, scaleX, scaleY, 0, 1, 0.5, 0.5, fadeInOutEnabled)
   end
 end
 
@@ -327,6 +336,11 @@ function eventNewPlayer(playerName)
 
   leaderboardVisible[playerName] = nil
   preparePlayer(playerName)
+  checkFadeInOut()
+end
+
+function eventPlayerLeft(playerName)
+  checkFadeInOut()
 end
 
 function eventKeyboard(playerName, keyCode)
