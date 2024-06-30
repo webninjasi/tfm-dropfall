@@ -1,4 +1,4 @@
-local VERSION = "2.11"
+local VERSION = "2.12"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -153,10 +153,12 @@ end
 local function showLeaderboard(playerName)
   leaderboardVisible[playerName] = true
   local lines = {
-    [0] = '<textformat tabstops="[30,250,400,480,550]">\n<b>#\tName\tTokens\tHole\tCheese\tTime</b>\n'
+    [0] = '<textformat tabstops="[30,320,400,480,550]">\n<b>#\tName\tTokens\tHole\tCheese\tTime</b>\n'
   }
+  local included = false
   for i=1, 10 do
     if leaderboard[i] then
+      included = included or leaderboard[i].playerName == playerName
       lines[i] = ("<BL>%d\t<V>%s\t<VP>%s\t<ROSE>%s\t<J>%s\t<CH>%ss"):format(
         i,
         leaderboard[i].playerName,
@@ -167,6 +169,17 @@ local function showLeaderboard(playerName)
       )
     end
   end
+  local row = leaderboardMap[playerName]
+  if row and not included then
+    lines[1+#lines] = ("\n<BL>You\t<V>%s\t<VP>%s\t<ROSE>%s\t<J>%s\t<CH>%ss"):format(
+      row.playerName,
+      row.bonus,
+      row.hole,
+      row.cheese,
+      row.time == 0 and "?" or (leaderboard[i].time / 100)
+    )
+  end
+  lines[1+#lines] = '\n<p align="center"><BL><b>Total Tokens:</b> <N>' .. mapTokenCount
   ui.addTextArea(1, table.concat(lines, '\n', 0, #lines), playerName, 100, 50, 600, 300, 1, 0, 0.8, true)
 end
 
