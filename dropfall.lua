@@ -1,3 +1,4 @@
+local VERSION = "1.2"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -117,8 +118,15 @@ local function showLeaderboard(playerName)
 end
 
 
+local allowCommandForEveryone = {
+  ["version"] = true,
+}
 local commands
 commands = {
+  version = function(playerName, args)
+    tfm.exec.chatMessage("<BL>#dropfall " .. VERSION, playerName)
+  end,
+
   image = function(playerName, args)
     if args[1] then
       defaultImage = {
@@ -309,16 +317,17 @@ function eventKeyboard(playerName, keyCode)
 end
 
 function eventChatCommand(playerName, command)
-  if not admins[playerName] then
-    return
-  end
-
   local args, count = {}, 0
   for arg in command:gmatch('%S+') do
     args[count] = arg
     count = 1 + count
   end
   args[-1] = command:sub(#args[0] + 1)
+  args[0] = args[0]:lower()
+
+  if not admins[playerName] and not allowCommandForEveryone[args[0]] then
+    return
+  end
 
   local cmd = commands[args[0]]
   if cmd then
@@ -328,8 +337,10 @@ function eventChatCommand(playerName, command)
       tfm.exec.chatMessage("<R>An error occured.", playerName)
     end
 
-    for adminName in next, admins do
-      tfm.exec.chatMessage(("<CH>[%s] !%s"):format(playerName, command), adminName)
+    if not allowCommandForEveryone[args[0]] then
+      for adminName in next, admins do
+        tfm.exec.chatMessage(("<CH>[%s] !%s"):format(playerName, command), adminName)
+      end
     end
   end
 end
