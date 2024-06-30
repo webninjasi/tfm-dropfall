@@ -1,4 +1,4 @@
-local VERSION = "1.3"
+local VERSION = "1.4"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -13,6 +13,7 @@ local maps = {
 local mapName
 local bans = {}
 local defaultImage
+local reloadCode
 
 local pressCooldown = {}
 local leaderboard = {}
@@ -249,6 +250,17 @@ commands = {
 
 
 function eventNewGame()
+  local xml = room.xmlMapInfo and tfm.get.room.xmlMapInfo.xml
+  if xml and room.xmlMapInfo.author ~= "#Module" then
+    local properties = xml:match('<P (.-)/>')
+    if properties then
+      if properties:match('reload=""') then
+        mapName = ("<J>%s <BL>- @%s"):format(room.xmlMapInfo.author, room.xmlMapInfo.mapCode)
+        reloadCode = xml
+      end
+    end
+  end
+
   for playerName in next, room.playerList do
     tfm.exec.freezePlayer(playerName, true, false)
 
@@ -259,6 +271,13 @@ function eventNewGame()
 
   if mapName then
     ui.setMapName(mapName)
+  end
+end
+
+function eventLoop(elapsedTime, remainingTime)
+  if reloadCode and elapsedTime > 3100 then
+    tfm.exec.newGame(reloadCode)
+    reloadCode = nil
   end
 end
 
