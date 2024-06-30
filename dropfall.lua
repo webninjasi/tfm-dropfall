@@ -444,7 +444,7 @@ function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
     tfm.exec.respawnPlayer(playerName)
     updateLeaderboard(playerName, 1, 0, timeElapsedSinceRespawn)
 
-    tfm.exec.chatMessage(('<BL>[module] <V>%s <N>won the map in <J>%s seconds!'):format(
+    tfm.exec.chatMessage(('<BL>[module] <V>%s <N>has won the map in <J>%s seconds!'):format(
       playerName,
       timeElapsedSinceRespawn / 100
     ), nil)
