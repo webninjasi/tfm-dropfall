@@ -1,4 +1,4 @@
-local VERSION = "1.6"
+local VERSION = "1.7"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -384,7 +384,7 @@ function eventChatCommand(playerName, command)
 
     if not allowCommandForEveryone[args[0]] then
       for adminName in next, admins do
-        tfm.exec.chatMessage(("<CH>[%s] !%s"):format(playerName, command), adminName)
+        tfm.exec.chatMessage(("<BL>[%s] !%s"):format(playerName, command), adminName)
       end
     end
   end
