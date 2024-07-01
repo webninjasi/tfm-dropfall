@@ -1,4 +1,4 @@
-local VERSION = "3.25"
+local VERSION = "3.26"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -40,6 +40,14 @@ local leaderboard = {}
 local leaderboardMap = {}
 local leaderboardVisible = {}
 
+
+local function disableStuff()
+  system.disableChatCommandDisplay(nil, true)
+  tfm.exec.disablePhysicalConsumables(true)
+  tfm.exec.disableAfkDeath(true)
+  tfm.exec.disableAutoShaman(true)
+  tfm.exec.disableAutoNewGame(true)
+end
 
 local function placeTeleport(playerName, tp, initial)
   if not tp then
@@ -452,6 +460,8 @@ commands = {
 
 
 function eventNewGame()
+  disableStuff()
+
   mapTokenCount = 0
   defaultSize = 1
   mapCheckpoints = nil
@@ -850,9 +860,5 @@ for playerName in next, room.playerList do
 end
 
 math.randomseed(os.time())
-system.disableChatCommandDisplay(nil, true)
-tfm.exec.disablePhysicalConsumables(true)
-tfm.exec.disableAfkDeath(true)
-tfm.exec.disableAutoShaman(true)
-tfm.exec.disableAutoNewGame(true)
+disableStuff()
 tfm.exec.newGame(maps[math.random(1, #maps)])
