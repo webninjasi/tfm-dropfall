@@ -1,4 +1,4 @@
-local VERSION = "3.24"
+local VERSION = "3.25"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -328,12 +328,15 @@ commands = {
       return
     end
 
-    if not mapBoosters[id] then
+    local booster = mapBoosters[id]
+    if not booster then
       return
     end
 
-    mapBoosters[id].vx = tonumber(args[2]) or 0
-    mapBoosters[id].vy = tonumber(args[3]) or 0
+    booster.vx = tonumber(args[2]) or booster.vx
+    booster.vy = tonumber(args[3]) or booster.vy
+    booster.gravity = tonumber(args[4]) or booster.gravity
+    booster.wind = tonumber(args[5]) or booster.wind
   end,
 
   mapname = function(playerName, args)
@@ -576,6 +579,20 @@ function eventNewGame()
                 vy = velocityY,
               }
             end
+
+            velocityY, velocityX = ground:match('gwscale="(.-),(.-)"')
+            velocityX = tonumber(velocityX)
+            velocityY = tonumber(velocityY)
+            if velocityX or velocityY then
+              if not mapBoosters then
+                mapBoosters = {}
+              end
+              if not mapBoosters[contactId] then
+                mapBoosters[contactId] = {}
+              end
+              mapBoosters[contactId].wind = velocityX or 1
+              mapBoosters[contactId].gravity = velocityY or 1
+            end
           end
         end
 
@@ -691,7 +708,13 @@ function eventContactListener(playerName, groundId, contactInfos)
     return
   end
 
-  tfm.exec.movePlayer(playerName, 0, 0, true, booster.vx, booster.vy, true)
+  if booster.vx or booster.vy then
+    tfm.exec.movePlayer(playerName, 0, 0, true, booster.vx or 0, booster.vy or 0, true)
+  end
+
+  if booster.gravity or booster.wind then
+    tfm.exec.setPlayerGravityScale(playerName, booster.gravity or 1, booster.wind or 1)
+  end
 end
 
 function eventPlayerBonusGrabbed(playerName, bonusId)
