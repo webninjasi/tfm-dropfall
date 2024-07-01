@@ -1,4 +1,4 @@
-local VERSION = "3.26"
+local VERSION = "3.28"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -17,6 +17,8 @@ local maps = {
 }
 
 
+local defaultGrav, defaultWind = 10, 0
+local mapGravity, mapWind = 10, 0
 local mapName
 local lastMapCode
 local mapTeleports
@@ -40,6 +42,36 @@ local leaderboard = {}
 local leaderboardMap = {}
 local leaderboardVisible = {}
 
+
+local function parseXMLAttr(str, name)
+  return str:match(' ' .. name .. '="(.-)"')
+end
+
+local function parseXMLArray(str, max)
+  local list, count = {}, 0
+  if str then
+    for value in str:gmatch('[^,]+') do
+      count = 1 + count
+      list[count] = value
+      if count == max then
+        break
+      end
+    end
+  end
+  return list
+end
+
+local function parseXMLNumArray(str, max)
+  local list = parseXMLArray(str, max)
+  for i=1, #list do
+    list[i] = tonumber(list[i])
+  end
+  return list
+end
+
+local function parseXMLNumAttr(str, name, max)
+  return table.unpack(parseXMLNumArray(parseXMLAttr(str, name), max))
+end
 
 local function disableStuff()
   system.disableChatCommandDisplay(nil, true)
@@ -326,8 +358,22 @@ commands = {
     end
   end,
 
-  booster = function(playerName, args)
+  boost = function(playerName, args)
     if not mapBoosters then
+      return
+    end
+
+    if not args[1] then
+      tfm.exec.chatMessage('<BL>[module] <N>Boosters on the map: <G>(vx, vy, wind, gravity)', playerName)
+      for id, booster in next, mapBoosters do
+        tfm.exec.chatMessage(('  <V>%s<N>: %s %s %s %s'):format(
+          id,
+          tostring(booster.vx),
+          tostring(booster.vy),
+          tostring(booster.wind),
+          tostring(booster.gravity)
+        ), playerName)
+      end
       return
     end
 
@@ -337,14 +383,33 @@ commands = {
     end
 
     local booster = mapBoosters[id]
-    if not booster then
+    if not args[2] then
+      if not booster then
+        tfm.exec.chatMessage(('<BL>[module] <N>Booster <V>%s <N>doesn\'t exist'):format(
+          id
+        ), playerName)
+        return
+      end
+
+      tfm.exec.chatMessage(('<BL>[module] <N>Booster <V>%s<N>: %s %s %s %s <G>(vx, vy, wind, gravity)'):format(
+        id,
+        tostring(booster.vx),
+        tostring(booster.vy),
+        tostring(booster.wind),
+        tostring(booster.gravity)
+      ), playerName)
       return
+    end
+
+    if not booster then
+      booster = {}
+      mapBoosters[id] = booster
     end
 
     booster.vx = tonumber(args[2]) or booster.vx
     booster.vy = tonumber(args[3]) or booster.vy
-    booster.gravity = tonumber(args[4]) or booster.gravity
-    booster.wind = tonumber(args[5]) or booster.wind
+    booster.wind = tonumber(args[4]) or booster.wind
+    booster.gravity = tonumber(args[5]) or booster.gravity
   end,
 
   mapname = function(playerName, args)
@@ -358,7 +423,9 @@ commands = {
   end,
 
   grav = function(playerName, args)
-    tfm.exec.setWorldGravity(args[2] or 0, args[1] or 10)
+    mapWind = tonumber(args[2]) or defaultWind
+    mapGravity = tonumber(args[1]) or defaultGrav
+    tfm.exec.setWorldGravity(mapWind, mapGravity)
   end,
 
   admin = function(playerName, args)
@@ -462,6 +529,8 @@ commands = {
 function eventNewGame()
   disableStuff()
 
+  defaultGrav, defaultWind = 10, 0
+  mapGravity, mapWind = defaultGrav, defaultWind
   mapTokenCount = 0
   defaultSize = 1
   mapCheckpoints = nil
@@ -486,6 +555,11 @@ function eventNewGame()
         mapName = ("<J>%s <BL>- @%s"):format(room.xmlMapInfo.author, room.xmlMapInfo.mapCode)
         reloadCode = xml
       else
+        defaultWind, defaultGrav = parseXMLNumAttr(properties, 'G', 2)
+        defaultWind = defaultWind or 0
+        defaultGrav = defaultGrav or 10
+        mapGravity, mapWind = defaultGrav, defaultWind
+
         local customMapName = properties:match('mapname="(.-)"')
         if customMapName then
           mapName = customMapName
@@ -572,36 +646,35 @@ function eventNewGame()
           teleportTime = {}
         end
 
-        local contactId, velocityX, velocityY
+        local contactId, velX, velY, accX, accY
         for ground in xml:gmatch('<S ([^>]*contact="%d+"[^>]*)/>') do
-          contactId = ground:match('contact="(%d+)"')
-          contactId = tonumber(contactId)
+          contactId = parseXMLNumAttr(ground, 'contact', 1)
           if contactId then
-            velocityX, velocityY = ground:match('boost="(.-),(.-)"')
-            velocityX = tonumber(velocityX) or 0
-            velocityY = tonumber(velocityY) or 0
-            if velocityX ~= 0 or velocityY ~= 0 then
+            velX, velY, accX, accY = parseXMLNumAttr(ground, 'boost', 4)
+            velX = velX or 0
+            velY = velY or 0
+            if velX ~= 0 or velY ~= 0 or accX or accY then
               if not mapBoosters then
                 mapBoosters = {}
               end
               mapBoosters[contactId] = {
-                vx = velocityX,
-                vy = velocityY,
+                vx = velX,
+                vy = velY,
+                wind = accX,
+                gravity = accY,
               }
             end
 
-            velocityY, velocityX = ground:match('gwscale="(.-),(.-)"')
-            velocityX = tonumber(velocityX)
-            velocityY = tonumber(velocityY)
-            if velocityX or velocityY then
+            accY, accX = parseXMLNumAttr(ground, 'gwscale', 2)
+            if accX or accY then
               if not mapBoosters then
                 mapBoosters = {}
               end
               if not mapBoosters[contactId] then
                 mapBoosters[contactId] = {}
               end
-              mapBoosters[contactId].wind = velocityX or 1
-              mapBoosters[contactId].gravity = velocityY or 1
+              mapBoosters[contactId].wind = accX and (accX * (mapWind == 0 and 0.01 or mapWind)) or nil
+              mapBoosters[contactId].gravity = accY and (accY * (mapGravity == 0 and 0.01 or mapGravity)) or nil
             end
           end
         end
@@ -723,7 +796,9 @@ function eventContactListener(playerName, groundId, contactInfos)
   end
 
   if booster.gravity or booster.wind then
-    tfm.exec.setPlayerGravityScale(playerName, booster.gravity or 1, booster.wind or 1)
+    local grav = booster.gravity and (booster.gravity / (mapGravity == 0 and 0.01 or mapGravity)) or 1
+    local wind = booster.wind and (booster.wind / (mapWind == 0 and 0.01 or mapWind)) or 1
+    tfm.exec.setPlayerGravityScale(playerName, grav, wind)
   end
 end
 
