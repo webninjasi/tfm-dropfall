@@ -1,4 +1,4 @@
-local VERSION = "3.30"
+local VERSION = "3.31"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -563,21 +563,14 @@ function eventNewGame()
         defaultGrav = defaultGrav or 10
         mapGravity, mapWind = defaultGrav, defaultWind
 
-        local customMapName = properties:match('mapname="(.-)"')
+        local customMapName = parseXMLAttr(properties, 'mapname')
         if customMapName then
           mapName = customMapName
         end
 
-        local customImage = properties:match('image="(.-)"')
+        local customImage = parseXMLAttr(properties, 'image')
         if customImage then
-          local imageId, scaleX, scaleY = customImage:match('^(.-),(.-),(.-)$')
-          if not imageId then
-            imageId, scaleX = customImage:match('^(.-),(.-)$')
-          end
-          if not imageId then
-            imageId = customImage
-          end
-
+          local imageId, scaleX, scaleY = parseXMLArray(customImage, 3)
           defaultImage = {
             imageId = imageId,
             scaleX = tonumber(scaleX) or 1,
@@ -595,17 +588,17 @@ function eventNewGame()
 
         if properties:find('kitchensink="') then
           local checkpoints = {}
-          local cp
+          local objType, objX, objX
 
           for obj in xml:gmatch('<O (.-)/>') do
-            cp = {}
-            for key, val in obj:gmatch('(%S-)="(.-)"') do
-              cp[key] = val
-            end
-            if cp.C == "22" and cp.X and cp.Y then
-              cp.X = tonumber(cp.X) or 0
-              cp.Y = tonumber(cp.Y) or 0
-              checkpoints[1+#checkpoints] = cp
+            objType = tonumber(parseXMLAttr(obj, 'C'))
+            objX = tonumber(parseXMLNumAttr(obj, 'X'))
+            objY = tonumber(parseXMLNumAttr(obj, 'Y'))
+            if objType == 22 and objX and objY then
+              checkpoints[1+#checkpoints] = {
+                X = objX,
+                Y = objY,
+              }
             end
           end
 
@@ -624,12 +617,9 @@ function eventNewGame()
         local index = 0
         for joint in xml:gmatch('<JD (.-)/>') do
           if joint:find('tp="') then
-            x1, y1 = joint:match('P1="([%d%.]+),([%d%.]+)"')
-            x2, y2 = joint:match('P2="([%d%.]+),([%d%.]+)"')
-            vx, vy, relative = joint:match('tp="(.-),(.-),(1)"')
-            if not vx then
-              vx, vy = joint:match('tp="(.-),(.-)"')
-            end
+            x1, y1 = parseXMLNumAttr(joint, 'P1', 2)
+            x2, y2 = parseXMLNumAttr(joint, 'P2', 2)
+            vx, vy, relative = parseXMLNumAttr(joint, 'tp', 3)
             index = 1 + index
             tp[index] = {
               x1 = tonumber(x1) or 0,
@@ -638,7 +628,7 @@ function eventNewGame()
               y2 = tonumber(y2) or 0,
               vx = tonumber(vx) or 0,
               vy = tonumber(vy) or 0,
-              relative = relative == '1',
+              relative = relative == 1,
               index = index,
             }
           end
