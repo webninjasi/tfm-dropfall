@@ -1,4 +1,4 @@
-local VERSION = "3.23"
+local VERSION = "3.24"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -316,6 +316,24 @@ commands = {
     for targetName in next, room.playerList do
       tfm.exec.changePlayerSize(targetName, defaultSize or 1)
     end
+  end,
+
+  booster = function(playerName, args)
+    if not mapBoosters then
+      return
+    end
+
+    local id = tonumber(args[1])
+    if not id then
+      return
+    end
+
+    if not mapBoosters[id] then
+      return
+    end
+
+    mapBoosters[id].vx = tonumber(args[2]) or 0
+    mapBoosters[id].vy = tonumber(args[3]) or 0
   end,
 
   mapname = function(playerName, args)
