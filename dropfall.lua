@@ -1,4 +1,4 @@
-local VERSION = "3.20"
+local VERSION = "3.21"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -605,12 +605,18 @@ function eventPlayerRespawn(playerName)
 end
 
 function eventPlayerDied(playerName)
+  if reloadCode then
+    return
+  end
   if not bans[playerName] then
     tfm.exec.respawnPlayer(playerName)
   end
 end
 
 function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
+  if reloadCode then
+    return
+  end
   if not bans[playerName] then
     tfm.exec.respawnPlayer(playerName)
     updateLeaderboard(playerName, 1, 0, timeElapsedSinceRespawn)
