@@ -1,4 +1,4 @@
-local VERSION = "3.22"
+local VERSION = "3.23"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -29,6 +29,7 @@ local mapTokenCount = 0
 local mapCheckpoints, checkpointImage, checkpointImageSX, checkpointImageSY
 local teleportReplace
 local teleportTime
+local mapBoosters
 
 local playerCp
 local cpImage = {}
@@ -438,6 +439,7 @@ function eventNewGame()
   defaultImage = nil
   teleportReplace = nil
   teleportTime = nil
+  mapBoosters = nil
 
   if room.currentMap ~= "@0" and lastMapCode ~= room.currentMap then
     resetLeaderboard()
@@ -537,6 +539,26 @@ function eventNewGame()
         if #tp > 0 then
           mapTeleports = tp
           teleportTime = {}
+        end
+
+        local contactId, velocityX, velocityY
+        for ground in xml:gmatch('<S ([^>]*contact="%d+"[^>]*)/>') do
+          contactId = ground:match('contact="(%d+)"')
+          contactId = tonumber(contactId)
+          if contactId then
+            velocityX, velocityY = ground:match('boost="(.-),(.-)"')
+            velocityX = tonumber(velocityX) or 0
+            velocityY = tonumber(velocityY) or 0
+            if velocityX ~= 0 or velocityY ~= 0 then
+              if not mapBoosters then
+                mapBoosters = {}
+              end
+              mapBoosters[contactId] = {
+                vx = velocityX,
+                vy = velocityY,
+              }
+            end
+          end
         end
 
         local customSize = tonumber(properties:match('size="(%d+)"'))
@@ -639,6 +661,19 @@ function eventPlayerGetCheese(playerName)
   if not bans[playerName] then
     updateLeaderboard(playerName, 0, 1, 0)
   end
+end
+
+function eventContactListener(playerName, groundId, contactInfos)
+  if not mapBoosters then
+    return
+  end
+
+  local booster = mapBoosters[tonumber(groundId)]
+  if not booster then
+    return
+  end
+
+  tfm.exec.movePlayer(playerName, 0, 0, true, booster.vx, booster.vy, true)
 end
 
 function eventPlayerBonusGrabbed(playerName, bonusId)
