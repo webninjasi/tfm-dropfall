@@ -1,4 +1,4 @@
-local VERSION = "3.33"
+local VERSION = "3.34"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -303,6 +303,14 @@ local commands
 commands = {
   spec = function(playerName, args)
     spectator[playerName] = not spectator[playerName]
+
+    if room.playerList[playerName] and room.playerList[playerName].isDead then
+      if not bans[playerName] and not spectator[playerName] then
+        tfm.exec.respawnPlayer(playerName)
+      end
+      return
+    end
+  
     tfm.exec.killPlayer(playerName)
   end,
 
@@ -704,7 +712,7 @@ function eventNewGame()
       end
     end
   
-    if bans[playerName] then
+    if bans[playerName] or spectator[playerName] and not (specX and specY) then
       tfm.exec.killPlayer(playerName)
     else
       eventPlayerRespawn(playerName)
