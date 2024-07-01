@@ -1,4 +1,4 @@
-local VERSION = "3.21"
+local VERSION = "3.22"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -11,6 +11,9 @@ local maps = {
   7955436,
   7955494,
   7955497,
+  7955501,
+  7955503,
+  7955511,
 }
 
 
@@ -322,6 +325,10 @@ commands = {
       mapName = nil
       ui.setMapName("")
     end
+  end,
+
+  grav = function(playerName, args)
+    tfm.exec.setWorldGravity(args[2] or 0, args[1] or 10)
   end,
 
   admin = function(playerName, args)
