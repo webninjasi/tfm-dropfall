@@ -1,4 +1,4 @@
-local VERSION = "3.32"
+local VERSION = "3.33"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -565,7 +565,7 @@ function eventNewGame()
 
   local xml = room.xmlMapInfo and tfm.get.room.xmlMapInfo.xml
   if xml then
-    local properties = xml:match('<P (.-)/>')
+    local properties = xml:match('<P( .-)/>')
     if properties then
       if room.xmlMapInfo.author ~= "#Module" and properties:find('reload=""') then
         mapName = ("<J>%s <BL>- @%s"):format(room.xmlMapInfo.author, room.xmlMapInfo.mapCode)
@@ -605,10 +605,10 @@ function eventNewGame()
           local checkpoints = {}
           local objType, objX, objX
 
-          for obj in xml:gmatch('<O (.-)/>') do
-            objType = tonumber(parseXMLAttr(obj, 'C'))
-            objX = tonumber(parseXMLNumAttr(obj, 'X'))
-            objY = tonumber(parseXMLNumAttr(obj, 'Y'))
+          for obj in xml:gmatch('<O( .-)/>') do
+            objType = parseXMLNumAttr(obj, 'C', 1)
+            objX = parseXMLNumAttr(obj, 'X', 1)
+            objY = parseXMLNumAttr(obj, 'Y', 1)
             if objType == 22 and objX and objY then
               checkpoints[1+#checkpoints] = {
                 X = objX,
@@ -630,7 +630,7 @@ function eventNewGame()
         local x1, y1, x2, y2, vx, vy
         local relative
         local index = 0
-        for joint in xml:gmatch('<JD (.-)/>') do
+        for joint in xml:gmatch('<JD( .-)/>') do
           if joint:find('tp="') then
             x1, y1 = parseXMLNumAttr(joint, 'P1', 2)
             x2, y2 = parseXMLNumAttr(joint, 'P2', 2)
@@ -655,7 +655,7 @@ function eventNewGame()
         end
 
         local contactId, velX, velY, accX, accY
-        for ground in xml:gmatch('<S ([^>]*contact="%d+"[^>]*)/>') do
+        for ground in xml:gmatch('<S( [^>]*contact="%d+"[^>]*)/>') do
           contactId = parseXMLNumAttr(ground, 'contact', 1)
           if contactId then
             velX, velY, accX, accY = parseXMLNumAttr(ground, 'boost', 4)
