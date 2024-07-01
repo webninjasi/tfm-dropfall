@@ -1,4 +1,4 @@
-local VERSION = "3.29"
+local VERSION = "3.30"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -91,7 +91,7 @@ local function placeTeleport(playerName, tp, initial)
   tfm.exec.addBonus(0, tp.x1, tp.y1, 100+tp.index, 0, false, playerName)
 
   if initial then
-    tfm.exec.addImage("168a9a499b2.png", "_444", tp.x1, tp.y1, playerName, 1, 1, 0, 1, 0.5, 0.5, false)
+    tfm.exec.addImage("17948dad4f5.png", "_444", tp.x1, tp.y1, playerName, 1, 1, 0, 1, 0.5, 0.5, false)
   end
 end
 
