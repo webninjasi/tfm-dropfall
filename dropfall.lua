@@ -1,4 +1,4 @@
-local VERSION = "3.35"
+local VERSION = "3.36"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -18,6 +18,24 @@ local maps = {
 }
 
 
+local loadMapCode, loadMapReversed
+do
+  local nextLoadTime
+  local newGame = tfm.exec.newGame
+
+  function tfm.exec.newGame(mapCode, flipped)
+    if nextLoadTime and os.time() < nextLoadTime then
+      loadMapCode, loadMapReversed = mapCode, flipped
+      return
+    end
+
+    nextLoadTime = os.time() + 3100
+    loadMapCode, loadMapReversed = nil, nil
+    newGame(mapCode, flipped)
+  end
+end
+
+
 local specX, specY
 local defaultGrav, defaultWind = 10, 0
 local mapGravity, mapWind = 10, 0
@@ -27,7 +45,6 @@ local mapTeleports
 local bans = {}
 local defaultImage
 local defaultSize
-local reloadCode
 local fadeInOutEnabled = true
 local mapTokenCount = 0
 local mapCheckpoints, checkpointImage, checkpointImageSX, checkpointImageSY
@@ -577,7 +594,7 @@ function eventNewGame()
     if properties then
       if room.xmlMapInfo.author ~= "#Module" and properties:find('reload=""') then
         mapName = ("<J>%s <BL>- @%s"):format(room.xmlMapInfo.author, room.xmlMapInfo.mapCode)
-        reloadCode = xml
+        tfm.exec.newGame(xml)
       else
         defaultWind, defaultGrav = parseXMLNumAttr(properties, 'G', 2)
         defaultWind = defaultWind or 0
@@ -727,9 +744,8 @@ function eventNewGame()
 end
 
 function eventLoop(elapsedTime, remainingTime)
-  if reloadCode and elapsedTime > 3100 then
-    tfm.exec.newGame(reloadCode)
-    reloadCode = nil
+  if loadMapCode then
+    tfm.exec.newGame(loadMapCode, loadMapReversed)
   end
 
   if teleportReplace and mapTeleports then
@@ -770,7 +786,7 @@ function eventPlayerRespawn(playerName)
 end
 
 function eventPlayerDied(playerName)
-  if reloadCode then
+  if loadMapCode then
     return
   end
   if not bans[playerName] and (not spectator[playerName] or specX and specY) then
@@ -779,7 +795,7 @@ function eventPlayerDied(playerName)
 end
 
 function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
-  if reloadCode then
+  if loadMapCode then
     return
   end
   if not bans[playerName] then
