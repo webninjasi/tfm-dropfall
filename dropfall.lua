@@ -1,4 +1,4 @@
-local VERSION = "3.34"
+local VERSION = "3.35"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -593,15 +593,17 @@ function eventNewGame()
 
         local customImage = parseXMLAttr(properties, 'image')
         if customImage then
-          local imageId, scaleX, scaleY = parseXMLArray(customImage, 3)
-          defaultImage = {
-            imageId = imageId,
-            scaleX = tonumber(scaleX) or 1,
-            scaleY = tonumber(scaleY) or tonumber(scaleX) or 1,
-          }
+          local imageId, scaleX, scaleY = table.unpack(parseXMLArray(customImage, 3))
+          if imageId then
+            defaultImage = {
+              imageId = imageId,
+              scaleX = tonumber(scaleX) or 1,
+              scaleY = tonumber(scaleY) or tonumber(scaleX) or 1,
+            }
+          end
         end
 
-        if properties:find('defilante="') then
+        if properties:find(' defilante="') then
           for obj in xml:gmatch('<O (.-)/>') do
             if obj:find('C="6"') then
               mapTokenCount = mapTokenCount + 1
@@ -609,7 +611,7 @@ function eventNewGame()
           end
         end
 
-        if properties:find('kitchensink="') then
+        if properties:find(' kitchensink="') then
           local checkpoints = {}
           local objType, objX, objX
 
@@ -627,7 +629,7 @@ function eventNewGame()
 
           if #checkpoints > 0 then
             mapCheckpoints = checkpoints
-            checkpointImage, checkpointImageSX, checkpointImageSY = properties:match('kitchensink="([a-zA-z0-9]+%.png),(%d+),(%d+)"')
+            checkpointImage, checkpointImageSX, checkpointImageSY = table.unpack(parseXMLArray(parseXMLAttr(properties, 'kitchensink'), 3))
             checkpointImageSX = tonumber(checkpointImageSX)
             checkpointImageSY = tonumber(checkpointImageSY)
             playerCp = {}
@@ -639,7 +641,7 @@ function eventNewGame()
         local relative
         local index = 0
         for joint in xml:gmatch('<JD( .-)/>') do
-          if joint:find('tp="') then
+          if joint:find(' tp="') then
             x1, y1 = parseXMLNumAttr(joint, 'P1', 2)
             x2, y2 = parseXMLNumAttr(joint, 'P2', 2)
             vx, vy, relative = parseXMLNumAttr(joint, 'tp', 3)
