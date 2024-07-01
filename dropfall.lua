@@ -1,4 +1,4 @@
-local VERSION = "3.28"
+local VERSION = "3.29"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -14,6 +14,7 @@ local maps = {
   7955501,
   7955503,
   7955511,
+  7955571,
 }
 
 
@@ -318,6 +319,7 @@ commands = {
     for i=1, #list, 10 do
       tfm.exec.chatMessage("<V>" .. table.concat(list, ' ', i, math.min(#list, i+9)), playerName)
     end
+    return true
   end,
 
   image = function(playerName, args)
@@ -359,12 +361,12 @@ commands = {
   end,
 
   boost = function(playerName, args)
-    if not mapBoosters then
-      return
-    end
-
     if not args[1] then
       tfm.exec.chatMessage('<BL>[module] <N>Boosters on the map: <G>(vx, vy, wind, gravity)', playerName)
+      if not mapBoosters then
+        return true
+      end
+
       for id, booster in next, mapBoosters do
         tfm.exec.chatMessage(('  <V>%s<N>: %s %s %s %s'):format(
           id,
@@ -374,21 +376,21 @@ commands = {
           tostring(booster.gravity)
         ), playerName)
       end
-      return
+      return true
     end
 
     local id = tonumber(args[1])
     if not id then
-      return
+      return true
     end
 
-    local booster = mapBoosters[id]
+    local booster = mapBoosters and mapBoosters[id]
     if not args[2] then
       if not booster then
         tfm.exec.chatMessage(('<BL>[module] <N>Booster <V>%s <N>doesn\'t exist'):format(
           id
         ), playerName)
-        return
+        return true
       end
 
       tfm.exec.chatMessage(('<BL>[module] <N>Booster <V>%s<N>: %s %s %s %s <G>(vx, vy, wind, gravity)'):format(
@@ -398,11 +400,12 @@ commands = {
         tostring(booster.wind),
         tostring(booster.gravity)
       ), playerName)
-      return
+      return true
     end
 
     if not booster then
       booster = {}
+      mapBoosters = mapBoosters or {}
       mapBoosters[id] = booster
     end
 
@@ -917,12 +920,12 @@ function eventChatCommand(playerName, command)
   local cmd = commands[args[0]]
   if cmd then
     ok, err = pcall(cmd, playerName, args)
-    if err then
+    if not ok and err then
       print(("Error on command %s: %s"):format(tostring(args[0]), tostring(err)))
       tfm.exec.chatMessage("<BL>[module] <N>An error occured.", playerName)
     end
 
-    if not allowCommandForEveryone[args[0]] then
+    if not allowCommandForEveryone[args[0]] and (ok and not err) then
       for adminName in next, admins do
         tfm.exec.chatMessage(("<V>[%s] <BL>!%s"):format(playerName, command), adminName)
       end
