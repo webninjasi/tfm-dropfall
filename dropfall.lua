@@ -1,4 +1,4 @@
-local VERSION = "3.31"
+local VERSION = "3.32"
 local room = tfm.get.room
 local admins = {
   ["Mckeydown#0000"] = true,
@@ -18,6 +18,7 @@ local maps = {
 }
 
 
+local specX, specY
 local defaultGrav, defaultWind = 10, 0
 local mapGravity, mapWind = 10, 0
 local mapName
@@ -35,6 +36,7 @@ local teleportTime
 local mapBoosters
 
 local playerCp
+local spectator = {}
 local cpImage = {}
 local collectedBonus = {}
 local playerImage = {}
@@ -295,9 +297,19 @@ local allowCommandForEveryone = {
   ["mapinfo"] = true,
   ["commands"] = true,
   ["help"] = true,
+  ["spec"] = true,
 }
 local commands
 commands = {
+  spec = function(playerName, args)
+    spectator[playerName] = not spectator[playerName]
+    tfm.exec.killPlayer(playerName)
+  end,
+
+  speczone = function(playerName, args)
+    specX, specY = tonumber(args[1]), tonumber(args[2])
+  end,
+
   help = function(playerName, args)
     tfm.exec.chatMessage("<BL>[module] <N>You can AFK here I guess, type <G>!commands <N>for more useful commands.", playerName)
   end,
@@ -532,6 +544,7 @@ commands = {
 function eventNewGame()
   disableStuff()
 
+  specX, specY = nil, nil
   defaultGrav, defaultWind = 10, 0
   mapGravity, mapWind = defaultGrav, defaultWind
   mapTokenCount = 0
@@ -562,6 +575,8 @@ function eventNewGame()
         defaultWind = defaultWind or 0
         defaultGrav = defaultGrav or 10
         mapGravity, mapWind = defaultGrav, defaultWind
+
+        specX, specY = parseXMLNumAttr(properties, 'speczone', 2)
 
         local customMapName = parseXMLAttr(properties, 'mapname')
         if customMapName then
@@ -680,33 +695,25 @@ function eventNewGame()
     end
   end
 
+  collectedBonus = {}
+
   for playerName in next, room.playerList do
-    tfm.exec.freezePlayer(playerName, true, false)
-
-    if bans[playerName] then
-      tfm.exec.killPlayer(playerName)
-    end
-
-    if mapCheckpoints then
-      placeCheckpoint(playerName, 1)
-    end
-
     if mapTeleports then
       for i=1, #mapTeleports do
         placeTeleport(playerName, mapTeleports[i], true)
       end
     end
-
-    if defaultImage then
-      updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
+  
+    if bans[playerName] then
+      tfm.exec.killPlayer(playerName)
+    else
+      eventPlayerRespawn(playerName)
     end
   end
 
   if mapName then
     ui.setMapName(mapName)
   end
-
-  collectedBonus = {}
 end
 
 function eventLoop(elapsedTime, remainingTime)
@@ -727,6 +734,14 @@ function eventLoop(elapsedTime, remainingTime)
 end
 
 function eventPlayerRespawn(playerName)
+  if spectator[playerName] then
+    if specX and specY then
+      tfm.exec.movePlayer(playerName, specX, specY)
+    end
+
+    return
+  end
+
   collectedBonus[playerName] = 0
   tfm.exec.freezePlayer(playerName, true, false)
 
@@ -748,7 +763,7 @@ function eventPlayerDied(playerName)
   if reloadCode then
     return
   end
-  if not bans[playerName] then
+  if not bans[playerName] and (not spectator[playerName] or specX and specY) then
     tfm.exec.respawnPlayer(playerName)
   end
 end
@@ -758,7 +773,14 @@ function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
     return
   end
   if not bans[playerName] then
-    tfm.exec.respawnPlayer(playerName)
+    if not spectator[playerName] or specX and specY then
+      tfm.exec.respawnPlayer(playerName)
+    end
+
+    if spectator[playerName] then
+      return
+    end
+
     updateLeaderboard(playerName, 1, 0, timeElapsedSinceRespawn)
 
     tfm.exec.chatMessage(('<BL>[module] <V>%s <N>has won the map in <J>%s seconds!'):format(
@@ -769,13 +791,17 @@ function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
 end
 
 function eventPlayerGetCheese(playerName)
+  if spectator[playerName] then
+    return
+  end
+
   if not bans[playerName] then
     updateLeaderboard(playerName, 0, 1, 0)
   end
 end
 
 function eventContactListener(playerName, groundId, contactInfos)
-  if not mapBoosters then
+  if not mapBoosters or spectator[playerName] then
     return
   end
 
@@ -796,7 +822,7 @@ function eventContactListener(playerName, groundId, contactInfos)
 end
 
 function eventPlayerBonusGrabbed(playerName, bonusId)
-  if bans[playerName] then
+  if bans[playerName] or spectator[playerName] then
     return
   end
 
@@ -853,7 +879,7 @@ function eventPlayerBonusGrabbed(playerName, bonusId)
 end
 
 function eventNewPlayer(playerName)
-  if not bans[playerName] then
+  if not bans[playerName] and (not spectator[playerName] or specX and specY) then
     tfm.exec.respawnPlayer(playerName)
   end
 
@@ -873,6 +899,7 @@ end
 
 function eventPlayerLeft(playerName)
   leaderboardVisible[playerName] = nil
+  collectedBonus[playerName] = nil
   checkFadeInOut()
 end
 
