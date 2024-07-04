@@ -1,4 +1,4 @@
-local VERSION = "3.40"
+local VERSION = "3.41"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -936,14 +936,12 @@ function eventContactListener(playerName, groundId, info)
 end
 
 function eventPlayerBonusGrabbed(playerName, bonusId)
-  if bans[playerName] or spectator[playerName] then
-    return
-  end
-
   if mapTeleports and bonusId >= 100 then
     local tp = mapTeleports[bonusId - 100]
     if tp then
-      tfm.exec.movePlayer(playerName, tp.x2, tp.y2, false, tp.vx, tp.vy, tp.relative)
+      if not bans[playerName] and not spectator[playerName] then
+        tfm.exec.movePlayer(playerName, tp.x2, tp.y2, false, tp.vx, tp.vy, tp.relative)
+      end
 
       if teleportTime[playerName] and os.time() < teleportTime[playerName] then
         if not teleportReplace then
@@ -961,6 +959,10 @@ function eventPlayerBonusGrabbed(playerName, bonusId)
       teleportTime[playerName] = os.time() + 1000
       placeTeleport(playerName, tp, false)
     end
+    return
+  end
+
+  if bans[playerName] or spectator[playerName] then
     return
   end
 
