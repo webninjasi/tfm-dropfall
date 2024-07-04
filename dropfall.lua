@@ -1,4 +1,4 @@
-local VERSION = "3.37"
+local VERSION = "3.38"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -37,6 +37,7 @@ do
 end
 
 
+local backgroundColor
 local specX, specY
 local defaultGrav, defaultWind = 10, 0
 local mapGravity, mapWind = 10, 0
@@ -492,6 +493,11 @@ commands = {
     end
   end,
 
+  bgcolor = function(playerName, args)
+    backgroundColor = args[1] and ("#" .. args[1])
+    ui.setBackgroundColor(args[1])
+  end,
+
   grav = function(playerName, args)
     mapWind = tonumber(args[2]) or defaultWind
     mapGravity = tonumber(args[1]) or defaultGrav
@@ -678,6 +684,9 @@ function eventNewGame()
             end
           end
         end
+
+        backgroundColor = parseXMLAttr(properties, 'bgcolor') or backgroundColor
+        ui.setBackgroundColor(backgroundColor)
 
         if properties:find(' kitchensink="') then
           local checkpoints = {}
@@ -957,6 +966,10 @@ end
 
 function eventNewPlayer(playerName)
   initPlayer(playerName)
+
+  if backgroundColor then
+    ui.setBackgroundColor(backgroundColor)
+  end
 
   if not bans[playerName] and (not spectator[playerName] or specX and specY) then
     tfm.exec.respawnPlayer(playerName)

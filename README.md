@@ -29,6 +29,7 @@
   - image: custom image to change player appearances
   - kitchensink: enables checkpoint/parkour mode, you can specify a custom checkpoint image optionally
   - size: default mouse size
+  - bgcolor: background color, hex code (e.g. FF00FF)
 - S
   - contact: allows the script to detect mouse-ground contacts, need to specify a unique number here
   - boost: booster parameters to use on contact
