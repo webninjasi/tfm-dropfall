@@ -1,10 +1,11 @@
-local VERSION = "3.36"
+local VERSION = "3.37"
+local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
-  ["Mckeydown#0000"] = true,
-  ["Stovedove##0000"] = true,
-  ["Lays#1146"] = true,
-  ["Inthebin#0000"] = true,
+  ["Mckeydown#0000"] = 10,
+  ["Lays#1146"] = 10,
+  ["Stovedove##0000"] = 7,
+  ["Inthebin#0000"] = 7,
 }
 local maps = {
   7955349,
@@ -53,6 +54,7 @@ local teleportTime
 local mapBoosters
 
 local playerCp
+local roomPlayers = {}
 local spectator = {}
 local cpImage = {}
 local collectedBonus = {}
@@ -101,6 +103,18 @@ local function disableStuff()
   tfm.exec.disableAutoNewGame(true)
 end
 
+local function sendModuleMessage(text, playerName)
+  tfm.exec.chatMessage("<BL>[module] <N>" .. tostring(text), playerName)
+end
+
+local function announceAdmins(message)
+  for adminName in next, admins do
+    if roomPlayers[adminName] then
+      tfm.exec.chatMessage(message, adminName)
+    end
+  end
+end
+
 local function placeTeleport(playerName, tp, initial)
   if not tp then
     return
@@ -138,7 +152,7 @@ end
 
 local function checkFadeInOut()
   local count = 0
-  for _ in next, room.playerList do
+  for _ in next, roomPlayers do
     count = count + 1
   end
   fadeInOutEnabled = count < 20
@@ -164,7 +178,9 @@ local function updateScore(playerName, row)
   end
 end
 
-local function preparePlayer(playerName)
+local function initPlayer(playerName)
+  roomPlayers[playerName] = true
+
   tfm.exec.bindKeyboard(playerName, 46, true, true)
   tfm.exec.bindKeyboard(playerName, 76, true, true)
 
@@ -177,7 +193,21 @@ local function preparePlayer(playerName)
     updateImage(playerName, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
   end
 
-  tfm.exec.chatMessage("<BL>[module] <N>Press <J>L <N>for leaderboard", playerName)
+  tfm.exec.chatMessage("<BL>[module] <N>You can type <G>!help <N>to see a help message and press <J>L <N>for the leaderboard", playerName)
+
+  local player = room.playerList[playerName]
+  local tribeName = room.name:sub(3)
+  local isGuest = playerName:find('*')
+
+  if not isGuest and player then
+    if room.name:find(playerName) or room.isTribeHouse and player.tribeName == tribeName then
+      admins[playerName] = 6
+    end
+  end
+
+  if not admins[playerName] then
+    eventChatCommand(playerName, 'room onlymine')
+  end
 end
 
 local function resetLeaderboard()
@@ -186,7 +216,7 @@ local function resetLeaderboard()
   leaderboardVisible = {}
   ui.removeTextArea(1)
 
-  for playerName in next, room.playerList do
+  for playerName in next, roomPlayers do
     tfm.exec.setPlayerScore(playerName, 0, false)
   end
 end
@@ -336,7 +366,7 @@ commands = {
   end,
 
   help = function(playerName, args)
-    tfm.exec.chatMessage("<BL>[module] <N>You can AFK here I guess, type <G>!commands <N>for more useful commands.", playerName)
+    tfm.exec.chatMessage("<BL>[module] <N>You can AFK here I guess, type <G>!commands <N>for more useful commands. Also press <J>L <N>for leaderboard!", playerName)
   end,
 
   mapinfo = function(playerName, args)
@@ -344,7 +374,7 @@ commands = {
   end,
 
   version = function(playerName, args)
-    tfm.exec.chatMessage("<BL>[module] <N>dropfall v" .. VERSION, playerName)
+    tfm.exec.chatMessage("<BL>[module] <N>dropfall v" .. VERSION  .. ' ~ Lays#1146', playerName)
   end,
 
   admins = function(playerName, args)
@@ -367,7 +397,7 @@ commands = {
         scaleY = args[3] or args[2] or 1,
       }
 
-      for targetPlayer in next, room.playerList do
+      for targetPlayer in next, roomPlayers do
         updateImage(targetPlayer, defaultImage.imageId, defaultImage.scaleX, defaultImage.scaleY)
       end
     else
@@ -392,7 +422,7 @@ commands = {
   size = function(playerName, args)
     defaultSize = tonumber(args[1])
 
-    for targetName in next, room.playerList do
+    for targetName in next, roomPlayers do
       tfm.exec.changePlayerSize(targetName, defaultSize or 1)
     end
   end,
@@ -469,23 +499,29 @@ commands = {
   end,
 
   admin = function(playerName, args)
-    if admins[playerName] ~= true then
+    local targetName = args[1]
+    if not targetName then
       return
     end
 
-    if args[1] and not admins[args[1]] then
-      admins[args[1]] = 1
+    if admins[targetName] and admins[targetName] >= admins[playerName] then
+      return
     end
+
+    admins[targetName] = 5
   end,
 
   unadmin = function(playerName, args)
-    if admins[playerName] ~= true then
+    local targetName = args[1]
+    if not targetName then
       return
     end
 
-    if args[1] and admins[args[1]] ~= true then
-      admins[args[1]] = nil
+    if admins[targetName] and admins[targetName] >= admins[playerName] then
+      return
     end
+
+    admins[targetName] = nil
   end,
 
   kill = function(playerName, args)
@@ -561,9 +597,24 @@ commands = {
       end
     end
 
-    tfm.exec.chatMessage('<BL>[module] <N>' .. table.concat(list, ', '), playerName)
+    table.sort(list)
+    sendModuleMessage('Available commands: <BL>' .. table.concat(list, ', '), playerName)
   end,
 }
+
+commands.room = function(playerName, args)
+  sendModuleMessage("You can create your room by typing\n<BL>/room " .. MODULE_ROOM:format(playerName), playerName)
+
+  if args[1] ~= 'onlymine' then
+    local roomName = tfm.get.room.name
+
+    if roomName:sub(1, 1) ~= '@' and roomName:sub(1, 1) ~= '*' then
+      roomName = ('%s <J>(%s)'):format(roomName, tfm.get.room.community)
+    end
+
+    sendModuleMessage("You are currently in\n<BL>/room " .. roomName, playerName)
+  end
+end
 
 
 function eventNewGame()
@@ -724,7 +775,7 @@ function eventNewGame()
 
   collectedBonus = {}
 
-  for playerName in next, room.playerList do
+  for playerName in next, roomPlayers do
     if mapTeleports then
       for i=1, #mapTeleports do
         placeTeleport(playerName, mapTeleports[i], true)
@@ -905,6 +956,8 @@ function eventPlayerBonusGrabbed(playerName, bonusId)
 end
 
 function eventNewPlayer(playerName)
+  initPlayer(playerName)
+
   if not bans[playerName] and (not spectator[playerName] or specX and specY) then
     tfm.exec.respawnPlayer(playerName)
   end
@@ -919,11 +972,11 @@ function eventNewPlayer(playerName)
     end
   end
 
-  preparePlayer(playerName)
   checkFadeInOut()
 end
 
 function eventPlayerLeft(playerName)
+  roomPlayers[playerName] = nil
   leaderboardVisible[playerName] = nil
   collectedBonus[playerName] = nil
   checkFadeInOut()
@@ -953,7 +1006,7 @@ function eventChatCommand(playerName, command)
     args[count] = arg
     count = 1 + count
   end
-  args[-1] = command:sub(#args[0] + 1)
+  args[-1] = command:sub(#args[0] + 2)
   args[0] = args[0]:lower()
 
   if not admins[playerName] and not allowCommandForEveryone[args[0]] then
@@ -964,20 +1017,29 @@ function eventChatCommand(playerName, command)
   if cmd then
     ok, err = pcall(cmd, playerName, args)
     if not ok and err then
-      print(("Error on command %s: %s"):format(tostring(args[0]), tostring(err)))
-      tfm.exec.chatMessage("<BL>[module] <N>An error occured.", playerName)
+      sendModuleMessage(("<R>Module error on command !%s: <BL>%s"):format(args[0], tostring(err)), playerName)
     end
 
     if not allowCommandForEveryone[args[0]] and (ok and not err) then
-      for adminName in next, admins do
-        tfm.exec.chatMessage(("<V>[%s] <BL>!%s"):format(playerName, command), adminName)
+      announceAdmins(("<V>[%s] <BL>!%s"):format(playerName, command))
+    end
+  end
+end
+
+
+for eventName, eventFunc in next, _G do
+  if eventName:find('event') == 1 then
+    _G[eventName] = function(...)
+      ok, err = pcall(eventFunc, ...)
+      if not ok then
+        announceAdmins(("<R>Module error on %s: <BL>%s"):format(eventName, tostring(err)))
       end
     end
   end
 end
 
 for playerName in next, room.playerList do
-  preparePlayer(playerName)
+  initPlayer(playerName)
 end
 
 math.randomseed(os.time())
