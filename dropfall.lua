@@ -1,4 +1,4 @@
-local VERSION = "3.38"
+local VERSION = "3.39"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -432,18 +432,21 @@ commands = {
 
   boost = function(playerName, args)
     if not args[1] then
-      tfm.exec.chatMessage('<BL>[module] <N>Boosters on the map: <G>(vx, vy, wind, gravity)', playerName)
+      tfm.exec.chatMessage('<BL>[module] <N>Boosters on the map: <G>(vx, vy, wind, gravity, power, radius, miceOnly)', playerName)
       if not mapBoosters then
         return true
       end
 
       for id, booster in next, mapBoosters do
-        tfm.exec.chatMessage(('  <V>%s<N>: %s %s %s %s'):format(
+        tfm.exec.chatMessage(('  <V>%s<N>: %s %s %s %s %s %s %s'):format(
           id,
           tostring(booster.vx),
           tostring(booster.vy),
           tostring(booster.wind),
-          tostring(booster.gravity)
+          tostring(booster.gravity),
+          tostring(booster.power),
+          tostring(booster.radius),
+          tostring(booster.miceOnly)
         ), playerName)
       end
       return true
@@ -463,12 +466,15 @@ commands = {
         return true
       end
 
-      tfm.exec.chatMessage(('<BL>[module] <N>Booster <V>%s<N>: %s %s %s %s <G>(vx, vy, wind, gravity)'):format(
+      tfm.exec.chatMessage(('<BL>[module] <N>Booster <V>%s<N>: %s %s %s %s %s %s %s <G>(vx, vy, wind, gravity, power, radius, miceOnly)'):format(
         id,
         tostring(booster.vx),
         tostring(booster.vy),
         tostring(booster.wind),
-        tostring(booster.gravity)
+        tostring(booster.gravity),
+        tostring(booster.power),
+        tostring(booster.radius),
+        tostring(booster.miceOnly)
       ), playerName)
       return true
     end
@@ -483,6 +489,11 @@ commands = {
     booster.vy = tonumber(args[3]) or booster.vy
     booster.wind = tonumber(args[4]) or booster.wind
     booster.gravity = tonumber(args[5]) or booster.gravity
+    booster.power = tonumber(args[6]) or booster.power
+    booster.radius = tonumber(args[7]) or booster.radius
+    if args[8] then
+      booster.miceOnly = tonumber(args[8]) == 1
+    end
   end,
 
   mapname = function(playerName, args)
@@ -743,35 +754,46 @@ function eventNewGame()
           teleportTime = {}
         end
 
+        local groundX, groundY, booster
         local contactId, velX, velY, accX, accY
+        local power, radius, miceOnly
         for ground in xml:gmatch('<S( [^>]*contact="%d+"[^>]*)/>') do
           contactId = parseXMLNumAttr(ground, 'contact', 1)
           if contactId then
+            groundX = parseXMLNumAttr(ground, 'X', 1)
+            groundY = parseXMLNumAttr(ground, 'Y', 1)
+
+            if not mapBoosters then
+              mapBoosters = {}
+            end
+
+            booster = {
+              x = groundX or 0,
+              y = groundY or 0,
+            }
+            mapBoosters[contactId] = booster
+
             velX, velY, accX, accY = parseXMLNumAttr(ground, 'boost', 4)
             velX = velX or 0
             velY = velY or 0
             if velX ~= 0 or velY ~= 0 or accX or accY then
-              if not mapBoosters then
-                mapBoosters = {}
-              end
-              mapBoosters[contactId] = {
-                vx = velX,
-                vy = velY,
-                wind = accX,
-                gravity = accY,
-              }
+              booster.vx = velX
+              booster.vy = velY
+              booster.wind = accX
+              booster.gravity = accY
             end
 
             accY, accX = parseXMLNumAttr(ground, 'gwscale', 2)
             if accX or accY then
-              if not mapBoosters then
-                mapBoosters = {}
-              end
-              if not mapBoosters[contactId] then
-                mapBoosters[contactId] = {}
-              end
-              mapBoosters[contactId].wind = accX and (accX * (mapWind == 0 and 0.01 or mapWind)) or nil
-              mapBoosters[contactId].gravity = accY and (accY * (mapGravity == 0 and 0.01 or mapGravity)) or nil
+              booster.wind = accX and (accX * (mapWind == 0 and 0.01 or mapWind)) or nil
+              booster.gravity = accY and (accY * (mapGravity == 0 and 0.01 or mapGravity)) or nil
+            end
+
+            power, radius, miceOnly = parseXMLNumAttr(ground, 'explosion', 3)
+            if power then
+              booster.power = power
+              booster.radius = radius
+              booster.miceOnly = miceOnly == 1
             end
           end
         end
@@ -888,7 +910,7 @@ function eventPlayerGetCheese(playerName)
   end
 end
 
-function eventContactListener(playerName, groundId, contactInfos)
+function eventContactListener(playerName, groundId, info)
   if not mapBoosters or spectator[playerName] then
     return
   end
@@ -906,6 +928,10 @@ function eventContactListener(playerName, groundId, contactInfos)
     local grav = booster.gravity and (booster.gravity / (mapGravity == 0 and 0.01 or mapGravity)) or 1
     local wind = booster.wind and (booster.wind / (mapWind == 0 and 0.01 or mapWind)) or 1
     tfm.exec.setPlayerGravityScale(playerName, grav, wind)
+  end
+
+  if booster.power then
+    tfm.exec.explosion(info.contactX, info.contactY, booster.power, booster.radius, booster.miceOnly)
   end
 end
 
