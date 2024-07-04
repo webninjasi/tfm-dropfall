@@ -1,4 +1,4 @@
-local VERSION = "3.39"
+local VERSION = "3.40"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -507,8 +507,8 @@ commands = {
   end,
 
   bgcolor = function(playerName, args)
-    backgroundColor = args[1] and ("#" .. args[1])
-    ui.setBackgroundColor(args[1])
+    backgroundColor = args[1] and ("#" .. args[1]) or nil
+    ui.setBackgroundColor(backgroundColor)
   end,
 
   grav = function(playerName, args)
