@@ -5,7 +5,7 @@
 
 ```xml
 <C>
-  <P reload="" mapname="Custom Mapname Text" speczone="x,y" image="mouse.png,scaleX,scaleY" kitchensink="checkpoint.png,scaleX,scaleY" size="mouseSize" bgcolor="FF00FF"/>
+  <P reload="" mapname="Custom Mapname Text" speczone="x,y" image="mouse.png,scaleX,scaleY" kitchensink="checkpoint.png,scaleX,scaleY" size="mouseSize" bgcolor="FF00FF" meep=""/>
   <Z>
     <S>
       <S T="0" X="421" Y="372" L="665" H="76" P="0,0,0.3,0.2,0,0,0,0" contact="id" boost="vx,vy,wind,gravity" explosion="power,radius,miceOnly"/>
@@ -30,6 +30,7 @@
   - kitchensink: enables checkpoint/parkour mode, you can specify a custom checkpoint image optionally
   - size: default mouse size
   - bgcolor: background color in hex code
+  - meep: allow players to use meep power
 - S
   - contact: allows the script to detect mouse-ground contacts, need to specify a unique number here
   - boost: booster parameters to use on contact

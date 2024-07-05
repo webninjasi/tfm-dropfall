@@ -1,4 +1,4 @@
-local VERSION = "3.42"
+local VERSION = "3.43"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -55,6 +55,7 @@ local mapCheckpoints, checkpointImage, checkpointImageSX, checkpointImageSY
 local teleportReplace
 local teleportTime
 local mapBoosters
+local meepEnabled
 
 local playerCp
 local roomPlayers = {}
@@ -636,6 +637,14 @@ commands.room = function(playerName, args)
   end
 end
 
+commands.meep = function(playerName, args)
+  meepEnabled = not meepEnabled
+
+  for name in next, roomPlayers do
+    tfm.exec.giveMeep(name, meepEnabled)
+  end
+end
+
 
 function eventNewGame()
   disableStuff()
@@ -652,6 +661,7 @@ function eventNewGame()
   teleportReplace = nil
   teleportTime = nil
   mapBoosters = nil
+  meepEnabled = false
 
   if room.currentMap ~= "@0" and lastMapCode ~= room.currentMap then
     resetLeaderboard()
@@ -697,6 +707,10 @@ function eventNewGame()
               mapTokenCount = mapTokenCount + 1
             end
           end
+        end
+
+        if properties:find(' meep=""') then
+          meepEnabled = true
         end
 
         backgroundColor = parseXMLAttr(properties, 'bgcolor') or backgroundColor
@@ -821,6 +835,8 @@ function eventNewGame()
     else
       eventPlayerRespawn(playerName)
     end
+
+    tfm.exec.giveMeep(playerName, meepEnabled)
   end
 
   if mapName then
@@ -868,6 +884,9 @@ function eventPlayerRespawn(playerName)
   if defaultSize then
     tfm.exec.changePlayerSize(playerName, defaultSize)
   end
+
+  tfm.exec.giveMeep(playerName, false)
+  tfm.exec.giveMeep(playerName, meepEnabled)
 end
 
 function eventPlayerDied(playerName)
