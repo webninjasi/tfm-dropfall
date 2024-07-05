@@ -1,4 +1,4 @@
-local VERSION = "3.41"
+local VERSION = "3.42"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -348,6 +348,7 @@ local allowCommandForEveryone = {
   ["commands"] = true,
   ["help"] = true,
   ["spec"] = true,
+  ["room"] = true,
 }
 local commands
 commands = {
