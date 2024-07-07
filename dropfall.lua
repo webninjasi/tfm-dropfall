@@ -1,4 +1,4 @@
-local VERSION = "3.44"
+local VERSION = "3.45"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -305,7 +305,7 @@ end
 local function showLeaderboard(playerName)
   leaderboardVisible[playerName] = true
   local lines = {
-    [0] = ('<textformat tabstops="[30,270,360,430,500]">\n<b>#\tName\t%s\tHole\tCheese\tTime</b>\n'):format(
+    [0] = ('<textformat tabstops="[30,270,360,430,500]">\n<b>#\tName\tHole\t%s\tCheese\tTime</b>\n'):format(
       mapCheckpoints and "Checkpoints" or "Tokens"
     )
   }
@@ -313,11 +313,11 @@ local function showLeaderboard(playerName)
   for i=1, 10 do
     if leaderboard[i] then
       included = included or leaderboard[i].playerName == playerName
-      lines[i] = ("<BL>%d\t<V>%s\t<VP>%s\t<ROSE>%s\t<J>%s\t<CH>%ss"):format(
+      lines[i] = ("<BL>%d\t<V>%s\t<ROSE>%s\t<VP>%s\t<J>%s\t<CH>%ss"):format(
         i,
         leaderboard[i].playerName,
-        leaderboard[i].bonus,
         leaderboard[i].hole,
+        leaderboard[i].bonus,
         leaderboard[i].cheese,
         leaderboard[i].time == 0 and "?" or (leaderboard[i].time / 100)
       )
@@ -325,10 +325,10 @@ local function showLeaderboard(playerName)
   end
   local row = leaderboardMap[playerName]
   if row and not included then
-    lines[1+#lines] = ("\n<BL>You\t<V>%s\t<VP>%s\t<ROSE>%s\t<J>%s\t<CH>%ss"):format(
+    lines[1+#lines] = ("\n<BL>You\t<V>%s\t<ROSE>%s\t<VP>%s\t<J>%s\t<CH>%ss"):format(
       row.playerName,
-      row.bonus,
       row.hole,
+      row.bonus,
       row.cheese,
       row.time == 0 and "?" or (row.time / 100)
     )
