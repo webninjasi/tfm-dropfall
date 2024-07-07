@@ -1,4 +1,4 @@
-local VERSION = "3.43"
+local VERSION = "3.44"
 local MODULE_ROOM = "*#mckeydown dropfall %s"
 local room = tfm.get.room
 local admins = {
@@ -330,7 +330,7 @@ local function showLeaderboard(playerName)
       row.bonus,
       row.hole,
       row.cheese,
-      row.time == 0 and "?" or (leaderboard[i].time / 100)
+      row.time == 0 and "?" or (row.time / 100)
     )
   end
   if mapTokenCount ~= 0 then
